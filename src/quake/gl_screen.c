@@ -85,8 +85,8 @@ float		scr_conlines;		// lines of console to display
 // the 2D's nearest sampling, and clear of most of the view weapon, which the 3D view puts under
 // the translucent bar.
 cvar_t		scr_menuscale = {"scr_menuscale", "2", CVAR_ARCHIVE};
-cvar_t		scr_sbarscale = {"scr_sbarscale", "1", CVAR_ARCHIVE};
-cvar_t		scr_sbaralpha = {"scr_sbaralpha", "0.75", CVAR_ARCHIVE};
+cvar_t		scr_sbarscale = {"scr_sbarscale", "1.5", CVAR_ARCHIVE}; // [PS2_QUAKE]: default from 1 to 1.5
+cvar_t		scr_sbaralpha = {"scr_sbaralpha", "0.5", CVAR_ARCHIVE}; // [PS2_QUAKE]: default from 0.75 to 0.5
 cvar_t		scr_conwidth = {"scr_conwidth", "0", CVAR_ARCHIVE};
 cvar_t		scr_conscale = {"scr_conscale", "1", CVAR_ARCHIVE};
 cvar_t		scr_crosshairscale = {"scr_crosshairscale", "1", CVAR_ARCHIVE};
