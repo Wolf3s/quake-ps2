@@ -87,7 +87,7 @@ float V_CalcRoll (vec3_t angles, vec3_t velocity)
 	AngleVectors (angles, forward, right, up);
 	side = DotProduct (velocity, right);
 	sign = side < 0 ? -1 : 1;
-	side = PS2Quake_Fabsf(side); // [PS2_QUAKE]: single precision (see mathlib.h)
+	side = PS2_Fabsf(side); // [PS2_QUAKE]: single precision (see mathlib.h)
 
 	value = cl_rollangle.value;
 //	if (cl.inwater)
@@ -127,9 +127,9 @@ float V_CalcBob (void)
 // (don't count Z, or jumping messes it up)
 
 	// [PS2_QUAKE]: single precision (see mathlib.h)
-	bob = PS2Quake_Sqrtf(cl.velocity[0]*cl.velocity[0] + cl.velocity[1]*cl.velocity[1]) * cl_bob.value;
+	bob = PS2_Sqrtf(cl.velocity[0]*cl.velocity[0] + cl.velocity[1]*cl.velocity[1]) * cl_bob.value;
 //Con_Printf ("speed: %5.1f\n", VectorLength(cl.velocity));
-	bob = bob*0.3 + bob*0.7*PS2Quake_Sinf(cycle);
+	bob = bob*0.3 + bob*0.7*PS2_Sinf(cycle);
 	if (bob > 4)
 		bob = 4;
 	else if (bob < -7)
@@ -196,7 +196,7 @@ void V_DriftPitch (void)
 // don't count small mouse motion
 	if (cl.nodrift)
 	{
-		if ( PS2Quake_Fabsf(cl.cmd.forwardmove) < cl_forwardspeed.value) // [PS2_QUAKE]: single precision (see mathlib.h)
+		if ( PS2_Fabsf(cl.cmd.forwardmove) < cl_forwardspeed.value) // [PS2_QUAKE]: single precision (see mathlib.h)
 			cl.driftmove = 0;
 		else
 			cl.driftmove += host_frametime;
@@ -611,9 +611,9 @@ void CalcGunAngle (void)
 	cl.viewent.angles[PITCH] = - (r_refdef.viewangles[PITCH] + pitch);
 
 	// [PS2_QUAKE]: single precision (see mathlib.h), here and in V_AddIdle
-	cl.viewent.angles[ROLL] -= v_idlescale.value * PS2Quake_Sinf(cl.time*v_iroll_cycle.value) * v_iroll_level.value;
-	cl.viewent.angles[PITCH] -= v_idlescale.value * PS2Quake_Sinf(cl.time*v_ipitch_cycle.value) * v_ipitch_level.value;
-	cl.viewent.angles[YAW] -= v_idlescale.value * PS2Quake_Sinf(cl.time*v_iyaw_cycle.value) * v_iyaw_level.value;
+	cl.viewent.angles[ROLL] -= v_idlescale.value * PS2_Sinf(cl.time*v_iroll_cycle.value) * v_iroll_level.value;
+	cl.viewent.angles[PITCH] -= v_idlescale.value * PS2_Sinf(cl.time*v_ipitch_cycle.value) * v_ipitch_level.value;
+	cl.viewent.angles[YAW] -= v_idlescale.value * PS2_Sinf(cl.time*v_iyaw_cycle.value) * v_iyaw_level.value;
 }
 
 /*
@@ -653,9 +653,9 @@ Idle swaying
 */
 void V_AddIdle (void)
 {
-	r_refdef.viewangles[ROLL] += v_idlescale.value * PS2Quake_Sinf(cl.time*v_iroll_cycle.value) * v_iroll_level.value;
-	r_refdef.viewangles[PITCH] += v_idlescale.value * PS2Quake_Sinf(cl.time*v_ipitch_cycle.value) * v_ipitch_level.value;
-	r_refdef.viewangles[YAW] += v_idlescale.value * PS2Quake_Sinf(cl.time*v_iyaw_cycle.value) * v_iyaw_level.value;
+	r_refdef.viewangles[ROLL] += v_idlescale.value * PS2_Sinf(cl.time*v_iroll_cycle.value) * v_iroll_level.value;
+	r_refdef.viewangles[PITCH] += v_idlescale.value * PS2_Sinf(cl.time*v_ipitch_cycle.value) * v_ipitch_level.value;
+	r_refdef.viewangles[YAW] += v_idlescale.value * PS2_Sinf(cl.time*v_iyaw_cycle.value) * v_iyaw_level.value;
 }
 
 

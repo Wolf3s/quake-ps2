@@ -174,9 +174,9 @@ static void S_MakeBlackmanWindowKernel(float *kernel, int M, float f_c)
 		else
 		{
 			// [PS2_QUAKE]: single precision (see mathlib.h), (float)M where it was (double)M
-			kernel[i] = ( PS2Quake_Sinf(2 * M_PI * f_c * (i - M/2.0)) / (i - (M/2.0)) )
-				* (0.42 - 0.5*PS2Quake_Cosf(2 * M_PI * i / (float)M)
-				   + 0.08*PS2Quake_Cosf(4 * M_PI * i / (float)M) );
+			kernel[i] = ( PS2_Sinf(2 * M_PI * f_c * (i - M/2.0)) / (i - (M/2.0)) )
+				* (0.42 - 0.5*PS2_Cosf(2 * M_PI * i / (float)M)
+				   + 0.08*PS2_Cosf(4 * M_PI * i / (float)M) );
 		}
 	}
 

@@ -1360,8 +1360,8 @@ static void CalcSurfaceExtents (msurface_t *s)
 	{
 		// [PS2_QUAKE]: single precision (see mathlib.h). mins and maxs are float, so these round
 		// exactly as libm's did; val's sum above stays double, as ericw explains.
-		bmins[i] = PS2Quake_Floorf(mins[i]/16);
-		bmaxs[i] = PS2Quake_Ceilf(maxs[i]/16);
+		bmins[i] = PS2_Floorf(mins[i]/16);
+		bmaxs[i] = PS2_Ceilf(maxs[i]/16);
 
 		s->texturemins[i] = bmins[i] * 16;
 		s->extents[i] = (bmaxs[i] - bmins[i]) * 16;
@@ -2212,7 +2212,7 @@ static float RadiusFromBounds (vec3_t mins, vec3_t maxs)
 	for (i=0 ; i<3 ; i++)
 	{
 		// [PS2_QUAKE]: single precision (see mathlib.h)
-		corner[i] = PS2Quake_Fabsf(mins[i]) > PS2Quake_Fabsf(maxs[i]) ? PS2Quake_Fabsf(mins[i]) : PS2Quake_Fabsf(maxs[i]);
+		corner[i] = PS2_Fabsf(mins[i]) > PS2_Fabsf(maxs[i]) ? PS2_Fabsf(mins[i]) : PS2_Fabsf(maxs[i]);
 	}
 
 	return VectorLength (corner);
@@ -2900,12 +2900,12 @@ static void Mod_CalcAliasBounds (aliashdr_t *a)
 		}
 
 	//rbounds will be used when entity has nonzero pitch or roll
-	radius = PS2Quake_Sqrtf(radius); // [PS2_QUAKE]: single precision (see mathlib.h)
+	radius = PS2_Sqrtf(radius); // [PS2_QUAKE]: single precision (see mathlib.h)
 	loadmodel->rmins[0] = loadmodel->rmins[1] = loadmodel->rmins[2] = -radius;
 	loadmodel->rmaxs[0] = loadmodel->rmaxs[1] = loadmodel->rmaxs[2] = radius;
 
 	//ybounds will be used when entity has nonzero yaw
-	yawradius = PS2Quake_Sqrtf(yawradius); // [PS2_QUAKE]: single precision (see mathlib.h)
+	yawradius = PS2_Sqrtf(yawradius); // [PS2_QUAKE]: single precision (see mathlib.h)
 	loadmodel->ymins[0] = loadmodel->ymins[1] = -yawradius;
 	loadmodel->ymaxs[0] = loadmodel->ymaxs[1] = yawradius;
 	loadmodel->ymins[2] = loadmodel->mins[2];

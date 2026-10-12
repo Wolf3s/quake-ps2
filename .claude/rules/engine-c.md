@@ -16,7 +16,7 @@ paths:
   -fsingle-precision-constant` and a lenient warning set. None of the backend's C++ style or
   `-Werror` rules apply here.
 - **No double FPU on the EE.** Unsuffixed constants are made float by the flag. Don't add
-  `double` math or `<math.h>` double calls to engine code: use `PS2Quake_Sinf`, `Cosf`,
+  `double` math or `<math.h>` double calls to engine code: use `PS2_Sinf`, `Cosf`,
   `Sqrtf`, `Floorf`, `Ceilf` and `Fabsf` from `ps2/math/math_c.h` (`mathlib.h` includes it),
   and newlib's float `atan2f`, `atanf` and `tanf`. QuakeSpasm's own `double` time (`realtime`,
   `cl.time`, `Sys_DoubleTime`) stays until profiling says otherwise.
@@ -52,7 +52,7 @@ levels of a BSP texture and keeps the light samples one byte per luxel (no `.lit
 float rather than ericw's double.
 
 For the math: `mathlib.h` includes `ps2/math/math_c.h`, and every engine call to libm's `sin`,
-`cos`, `sqrt`, `floor`, `ceil` and `fabs` is its `PS2Quake_*` version, tagged per function;
+`cos`, `sqrt`, `floor`, `ceil` and `fabs` is its `PS2_*` version, tagged per function;
 `atan`, `tan` and most `atan2`s are newlib's float versions. Three things stay double, on
 purpose:
 
@@ -67,8 +67,8 @@ purpose:
 
 Arguments built from the double `cl.time` (the idle sway, the gun's angles,
 `R_EntityParticles`) lost only their libm call: the double multiply in front of it waits for
-the double-time work. `PS2Quake_Cosf`'s error grows with the argument (5e-6 at 50 radians),
-which these tolerate. `PS2Quake_Floorf`/`Ceilf` match libm for every normal float; a denormal
+the double-time work. `PS2_Cosf`'s error grows with the argument (5e-6 at 50 radians),
+which these tolerate. `PS2_Floorf`/`Ceilf` match libm for every normal float; a denormal
 input reads as zero, as the EE's FPU treats it anyway.
 
 For the clocks: `realtime`, `cl.time`, `sv.time` and `host_frametime` stay double. `realtime`

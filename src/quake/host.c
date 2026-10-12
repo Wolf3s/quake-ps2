@@ -725,10 +725,10 @@ void _Host_Frame (float time)
 // check for commands typed to the host
 	Host_GetConsoleCommands ();
 
-	PS2Quake_ProfileBegin(PS2_PROF_SERVER); // [PS2_QUAKE]: the server frame's cost, for the profiler
+	PS2_ProfileBegin(PS2_PROF_SERVER); // [PS2_QUAKE]: the server frame's cost, for the profiler
 	if (sv.active)
 		Host_ServerFrame ();
-	PS2Quake_ProfileEnd(PS2_PROF_SERVER); // [PS2_QUAKE]
+	PS2_ProfileEnd(PS2_PROF_SERVER); // [PS2_QUAKE]
 
 //-------------------
 //
@@ -751,16 +751,16 @@ void _Host_Frame (float time)
 
 	SCR_UpdateScreen ();
 
-	PS2Quake_ProfileBegin(PS2_PROF_CL_PARTICLES); // [PS2_QUAKE]: the particles' cost, for the profiler
+	PS2_ProfileBegin(PS2_PROF_CL_PARTICLES); // [PS2_QUAKE]: the particles' cost, for the profiler
 	CL_RunParticles (); //johnfitz -- seperated from rendering
-	PS2Quake_ProfileEnd(PS2_PROF_CL_PARTICLES); // [PS2_QUAKE]
+	PS2_ProfileEnd(PS2_PROF_CL_PARTICLES); // [PS2_QUAKE]
 
 	if (host_speeds.value)
 		time2 = Sys_DoubleTime ();
 
 // update audio
 	BGM_Update();	// adds music raw samples and/or advances midi driver
-	PS2Quake_ProfileBegin(PS2_PROF_SND_MIX); // [PS2_QUAKE]: the mixer's cost, for the profiler
+	PS2_ProfileBegin(PS2_PROF_SND_MIX); // [PS2_QUAKE]: the mixer's cost, for the profiler
 	if (cls.signon == SIGNONS)
 	{
 		S_Update (r_origin, vpn, vright, vup);
@@ -768,7 +768,7 @@ void _Host_Frame (float time)
 	}
 	else
 		S_Update (vec3_origin, vec3_origin, vec3_origin, vec3_origin);
-	PS2Quake_ProfileEnd(PS2_PROF_SND_MIX); // [PS2_QUAKE]
+	PS2_ProfileEnd(PS2_PROF_SND_MIX); // [PS2_QUAKE]
 
 	CDAudio_Update();
 

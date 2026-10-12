@@ -64,10 +64,10 @@ void PerpendicularVector( vec3_t dst, const vec3_t src )
 	// [PS2_QUAKE]: single precision (see mathlib.h)
 	for ( pos = 0, i = 0; i < 3; i++ )
 	{
-		if ( PS2Quake_Fabsf( src[i] ) < minelem )
+		if ( PS2_Fabsf( src[i] ) < minelem )
 		{
 			pos = i;
-			minelem = PS2Quake_Fabsf( src[i] );
+			minelem = PS2_Fabsf( src[i] );
 		}
 	}
 	tempvec[0] = tempvec[1] = tempvec[2] = 0.0F;
@@ -204,14 +204,14 @@ void AngleVectors (vec3_t angles, vec3_t forward, vec3_t right, vec3_t up)
 
 	// [PS2_QUAKE]: single precision (see mathlib.h)
 	angle = angles[YAW] * (M_PI*2 / 360);
-	sy = PS2Quake_Sinf(angle);
-	cy = PS2Quake_Cosf(angle);
+	sy = PS2_Sinf(angle);
+	cy = PS2_Cosf(angle);
 	angle = angles[PITCH] * (M_PI*2 / 360);
-	sp = PS2Quake_Sinf(angle);
-	cp = PS2Quake_Cosf(angle);
+	sp = PS2_Sinf(angle);
+	cp = PS2_Cosf(angle);
 	angle = angles[ROLL] * (M_PI*2 / 360);
-	sr = PS2Quake_Sinf(angle);
-	cr = PS2Quake_Cosf(angle);
+	sr = PS2_Sinf(angle);
+	cr = PS2_Cosf(angle);
 
 	forward[0] = cp*cy;
 	forward[1] = cp*sy;
@@ -280,14 +280,14 @@ void CrossProduct (vec3_t v1, vec3_t v2, vec3_t cross)
 // Both run per entity per frame.
 vec_t VectorLength(vec3_t v)
 {
-	return PS2Quake_Sqrtf(DotProduct(v,v));
+	return PS2_Sqrtf(DotProduct(v,v));
 }
 
 float VectorNormalize (vec3_t v)
 {
 	float	length, ilength;
 
-	length = PS2Quake_Sqrtf(DotProduct(v,v));
+	length = PS2_Sqrtf(DotProduct(v,v));
 
 	if (length)
 	{

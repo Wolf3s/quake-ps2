@@ -774,8 +774,8 @@ int SV_TryUnstick (edict_t *ent, vec3_t oldvel)
 		clip = SV_FlyMove (ent, 0.1, &steptrace);
 
 		// [PS2_QUAKE]: single precision (see mathlib.h)
-		if ( PS2Quake_Fabsf(oldorg[1] - ent->v.origin[1]) > 4
-			|| PS2Quake_Fabsf(oldorg[0] - ent->v.origin[0]) > 4 )
+		if ( PS2_Fabsf(oldorg[1] - ent->v.origin[1]) > 4
+			|| PS2_Fabsf(oldorg[0] - ent->v.origin[0]) > 4 )
 		{
 		//	Con_DPrintf ("unstuck!\n");
 			return clip;
@@ -859,8 +859,8 @@ void SV_WalkMove (edict_t *ent)
 	if (clip)
 	{
 		// [PS2_QUAKE]: single precision (see mathlib.h)
-		if ( PS2Quake_Fabsf(oldorg[1] - ent->v.origin[1]) < 0.03125
-		&& PS2Quake_Fabsf(oldorg[0] - ent->v.origin[0]) < 0.03125 )
+		if ( PS2_Fabsf(oldorg[1] - ent->v.origin[1]) < 0.03125
+		&& PS2_Fabsf(oldorg[0] - ent->v.origin[0]) < 0.03125 )
 		{	// stepping up didn't make any progress
 			clip = SV_TryUnstick (ent, oldvel);
 		}

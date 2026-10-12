@@ -242,8 +242,8 @@ qboolean SV_StepDirection (edict_t *ent, float yaw, float dist)
 
 	yaw = yaw*M_PI*2 / 360;
 	// [PS2_QUAKE]: single precision (see mathlib.h)
-	move[0] = PS2Quake_Cosf(yaw)*dist;
-	move[1] = PS2Quake_Sinf(yaw)*dist;
+	move[0] = PS2_Cosf(yaw)*dist;
+	move[1] = PS2_Sinf(yaw)*dist;
 	move[2] = 0;
 
 	VectorCopy (ent->v.origin, oldorigin);

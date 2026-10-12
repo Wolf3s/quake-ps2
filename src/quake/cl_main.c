@@ -632,7 +632,7 @@ int CL_ReadFromServer (void)
 	cl.oldtime = cl.time;
 	cl.time += host_frametime;
 
-	PS2Quake_ProfileBegin(PS2_PROF_CL_PARSE); // [PS2_QUAKE]: reading and parsing's cost, for the profiler
+	PS2_ProfileBegin(PS2_PROF_CL_PARSE); // [PS2_QUAKE]: reading and parsing's cost, for the profiler
 	do
 	{
 		ret = CL_GetMessage ();
@@ -644,15 +644,15 @@ int CL_ReadFromServer (void)
 		cl.last_received_message = realtime;
 		CL_ParseServerMessage ();
 	} while (ret && cls.state == ca_connected);
-	PS2Quake_ProfileEnd(PS2_PROF_CL_PARSE); // [PS2_QUAKE]
+	PS2_ProfileEnd(PS2_PROF_CL_PARSE); // [PS2_QUAKE]
 
 	if (cl_shownet.value)
 		Con_Printf ("\n");
 
-	PS2Quake_ProfileBegin(PS2_PROF_CL_SCENE); // [PS2_QUAKE]: the scene's cost, for the profiler
+	PS2_ProfileBegin(PS2_PROF_CL_SCENE); // [PS2_QUAKE]: the scene's cost, for the profiler
 	CL_RelinkEntities ();
 	CL_UpdateTEnts ();
-	PS2Quake_ProfileEnd(PS2_PROF_CL_SCENE); // [PS2_QUAKE]
+	PS2_ProfileEnd(PS2_PROF_CL_SCENE); // [PS2_QUAKE]
 
 //johnfitz -- devstats
 

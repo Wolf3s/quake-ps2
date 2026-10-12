@@ -63,8 +63,8 @@ void SV_SetIdealPitch (void)
 
 	angleval = sv_player->v.angles[YAW] * M_PI*2 / 360;
 	// [PS2_QUAKE]: single precision (see mathlib.h)
-	sinval = PS2Quake_Sinf(angleval);
-	cosval = PS2Quake_Cosf(angleval);
+	sinval = PS2_Sinf(angleval);
+	cosval = PS2_Cosf(angleval);
 
 	for (i=0 ; i<MAX_FORWARD ; i++)
 	{
@@ -129,7 +129,7 @@ void SV_UserFriction (void)
 
 	vel = velocity;
 
-	speed = PS2Quake_Sqrtf(vel[0]*vel[0] +vel[1]*vel[1]); // [PS2_QUAKE]: single precision (see mathlib.h)
+	speed = PS2_Sqrtf(vel[0]*vel[0] +vel[1]*vel[1]); // [PS2_QUAKE]: single precision (see mathlib.h)
 	if (!speed)
 		return;
 

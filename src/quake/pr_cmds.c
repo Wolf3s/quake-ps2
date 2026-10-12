@@ -219,10 +219,10 @@ static void SetMinMaxSize (edict_t *e, float *minvec, float *maxvec, qboolean ro
 		a = angles[1]/180 * M_PI;
 
 		// [PS2_QUAKE]: single precision (see mathlib.h)
-		xvector[0] = PS2Quake_Cosf(a);
-		xvector[1] = PS2Quake_Sinf(a);
-		yvector[0] = -PS2Quake_Sinf(a);
-		yvector[1] = PS2Quake_Cosf(a);
+		xvector[0] = PS2_Cosf(a);
+		xvector[1] = PS2_Sinf(a);
+		yvector[0] = -PS2_Sinf(a);
+		yvector[1] = PS2_Cosf(a);
 
 		VectorCopy (minvec, bounds[0]);
 		VectorCopy (maxvec, bounds[1]);
@@ -427,7 +427,7 @@ static void PF_normalize (void)
 	value1 = G_VECTOR(OFS_PARM0);
 
 	new_temp = (double)value1[0] * value1[0] + (double)value1[1] * value1[1] + (double)value1[2]*value1[2];
-	new_temp = PS2Quake_Sqrtf (new_temp); // [PS2_QUAKE]: single precision (see mathlib.h)
+	new_temp = PS2_Sqrtf (new_temp); // [PS2_QUAKE]: single precision (see mathlib.h)
 
 	if (new_temp == 0)
 		newvalue[0] = newvalue[1] = newvalue[2] = 0;
@@ -457,7 +457,7 @@ static void PF_vlen (void)
 	value1 = G_VECTOR(OFS_PARM0);
 
 	new_temp = (double)value1[0] * value1[0] + (double)value1[1] * value1[1] + (double)value1[2]*value1[2];
-	new_temp = PS2Quake_Sqrtf(new_temp); // [PS2_QUAKE]: single precision (see mathlib.h)
+	new_temp = PS2_Sqrtf(new_temp); // [PS2_QUAKE]: single precision (see mathlib.h)
 
 	G_FLOAT(OFS_RETURN) = new_temp;
 }
@@ -525,7 +525,7 @@ static void PF_vectoangles (void)
 		if (yaw < 0)
 			yaw += 360;
 
-		forward = PS2Quake_Sqrtf (value1[0]*value1[0] + value1[1]*value1[1]);
+		forward = PS2_Sqrtf (value1[0]*value1[0] + value1[1]*value1[1]);
 		pitch = (int) (atan2(value1[2], forward) * 180 / M_PI);
 		if (pitch < 0)
 			pitch += 360;
@@ -1037,7 +1037,7 @@ static void PF_fabs (void)
 {
 	float	v;
 	v = G_FLOAT(OFS_PARM0);
-	G_FLOAT(OFS_RETURN) = PS2Quake_Fabsf(v); // [PS2_QUAKE]: single precision (see mathlib.h)
+	G_FLOAT(OFS_RETURN) = PS2_Fabsf(v); // [PS2_QUAKE]: single precision (see mathlib.h)
 }
 
 static void PF_vtos (void)
@@ -1210,8 +1210,8 @@ static void PF_walkmove (void)
 	yaw = yaw * M_PI * 2 / 360;
 
 	// [PS2_QUAKE]: single precision (see mathlib.h)
-	move[0] = PS2Quake_Cosf(yaw) * dist;
-	move[1] = PS2Quake_Sinf(yaw) * dist;
+	move[0] = PS2_Cosf(yaw) * dist;
+	move[1] = PS2_Sinf(yaw) * dist;
 	move[2] = 0;
 
 // save program state, because SV_movestep may call other progs
@@ -1313,12 +1313,12 @@ static void PF_rint (void)
 // [PS2_QUAKE]: single precision (see mathlib.h), here and in PF_ceil
 static void PF_floor (void)
 {
-	G_FLOAT(OFS_RETURN) = PS2Quake_Floorf(G_FLOAT(OFS_PARM0));
+	G_FLOAT(OFS_RETURN) = PS2_Floorf(G_FLOAT(OFS_PARM0));
 }
 
 static void PF_ceil (void)
 {
-	G_FLOAT(OFS_RETURN) = PS2Quake_Ceilf(G_FLOAT(OFS_PARM0));
+	G_FLOAT(OFS_RETURN) = PS2_Ceilf(G_FLOAT(OFS_PARM0));
 }
 
 

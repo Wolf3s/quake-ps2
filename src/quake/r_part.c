@@ -114,11 +114,11 @@ void R_EntityParticles (entity_t *ent)
 	{
 		angle = cl.time * avelocities[i][0];
 		// [PS2_QUAKE]: single precision (see mathlib.h)
-		sy = PS2Quake_Sinf(angle);
-		cy = PS2Quake_Cosf(angle);
+		sy = PS2_Sinf(angle);
+		cy = PS2_Cosf(angle);
 		angle = cl.time * avelocities[i][1];
-		sp = PS2Quake_Sinf(angle);
-		cp = PS2Quake_Cosf(angle);
+		sp = PS2_Sinf(angle);
+		cp = PS2_Cosf(angle);
 		angle = cl.time * avelocities[i][2];
 	//	sr = sin(angle);
 	//	cr = cos(angle);

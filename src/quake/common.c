@@ -1812,7 +1812,7 @@ static int COM_FindFile (const char *filename, int *handle, FILE **file,
 				com_filesize = pak->files[i].filelen;
 				file_from_pak = 1;
 				if (handle || file) // [PS2_QUAKE]: an open, not COM_FileExists - for the perf run's log
-					PS2Quake_FrameLogNoteOpen (filename);
+					PS2_FrameLogNoteOpen (filename);
 				if (path_id)
 					*path_id = search->path_id;
 				if (handle)
@@ -1849,7 +1849,7 @@ static int COM_FindFile (const char *filename, int *handle, FILE **file,
 			if (path_id)
 				*path_id = search->path_id;
 			if (handle || file) // [PS2_QUAKE]: an open, not COM_FileExists - for the perf run's log
-				PS2Quake_FrameLogNoteOpen (filename);
+				PS2_FrameLogNoteOpen (filename);
 			if (handle)
 			{
 				com_filesize = Sys_FileOpenRead (netpath, &i);
