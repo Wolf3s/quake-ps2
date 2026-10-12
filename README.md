@@ -212,10 +212,13 @@ implements those directly, with no GL underneath. All of it draws but fog, which
 - **2D** ([draw.cpp](src/ps2/renderer/draw.cpp)), in place of QuakeSpasm's `gl_draw.c`: console
   text, pics, fills, the tiled border, and QuakeSpasm's canvases, each of whose
   `glOrtho`/`glViewport` pairs becomes a scale and an offset. WAD pics under 64x64 share two
-  256x256 scrap atlases, as in QuakeSpasm; every other pic gets its own texture. The menus and
-  the status bar default to twice their size (`scr_menuscale`, `scr_sbarscale` 2), which fills
-  the 640x448 screen the way the original filled 320x200. At that size QuakeSpasm's slider
-  values, which sit past the menu's right edge, are cut off.
+  256x256 scrap atlases, as in QuakeSpasm; every other pic gets its own texture. The menus
+  default to twice their size (`scr_menuscale` 2), which fills the 640x448 screen the way the
+  original filled 320x200. At that size QuakeSpasm's slider values, which sit past the menu's
+  right edge, are cut off. The status bar stays at its own size (`scr_sbarscale` 1), centred
+  and 48 lines tall, as id's Quake drew it at 640x480. At 2 it spanned the screen and, with
+  the 3D view running under the translucent bar (`scr_sbaralpha` below 1), covered most of the
+  view weapon. The 2D samples nearest, so only whole scales keep its pixels even.
 - **The world** ([view.cpp](src/ps2/renderer/view.cpp)), in place of QuakeSpasm's
   `gl_rmain.c`, `r_world.c` and `r_brush.c`: its visibility code as it is (`R_MarkSurfaces`
   walking the PVS onto the textures' chains), and its multipass drawing on VU1 - each chain's

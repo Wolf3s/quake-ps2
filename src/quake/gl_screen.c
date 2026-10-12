@@ -79,11 +79,13 @@ float		scr_con_current;
 float		scr_conlines;		// lines of console to display
 
 //johnfitz -- new cvars
-// [PS2_QUAKE]: the menus and the status bar at twice their size by default (was 1). Quake laid
-// them out for 320x200, and on the PS2's 640x448 framebuffer, shown TV-sized, that is what fills
-// the screen the way the original did.
+// [PS2_QUAKE]: the menus at twice their size by default (was 1). Quake laid them out for 320x200,
+// and on the PS2's 640x448 framebuffer, shown TV-sized, that is what fills the screen the way the
+// original did. The status bar stays at 1, as id's Quake drew it at 640x480: centred, crisp under
+// the 2D's nearest sampling, and clear of most of the view weapon, which the 3D view puts under
+// the translucent bar.
 cvar_t		scr_menuscale = {"scr_menuscale", "2", CVAR_ARCHIVE};
-cvar_t		scr_sbarscale = {"scr_sbarscale", "2", CVAR_ARCHIVE};
+cvar_t		scr_sbarscale = {"scr_sbarscale", "1", CVAR_ARCHIVE};
 cvar_t		scr_sbaralpha = {"scr_sbaralpha", "0.75", CVAR_ARCHIVE};
 cvar_t		scr_conwidth = {"scr_conwidth", "0", CVAR_ARCHIVE};
 cvar_t		scr_conscale = {"scr_conscale", "1", CVAR_ARCHIVE};
