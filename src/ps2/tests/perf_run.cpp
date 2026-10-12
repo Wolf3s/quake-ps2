@@ -58,6 +58,13 @@ static int   s_issuedAtMs  = 0;
 static int   s_startedAtMs = 0;
 static int   s_failed      = 0;
 
+// The on-screen debug panels a capture turns off, and the values they had before it: archived,
+// so the capture puts them back ahead of its quit, and a run leaves config.cfg as it found it.
+constexpr const char * kPanelCvars[] = {
+    "ps2_show_fps", "ps2_show_memstats", "ps2_show_vramstats", "ps2_show_drawstats", "ps2_show_profile"
+};
+static char s_panelValues[ps2::ArrayLength(kPanelCvars)][MAX_QPATH] = {};
+
 void StartDemo()
 {
     Con_Printf("PerfRun: [%d/%d] playing %s\n", s_nextDemo + 1, ps2::ArrayLength(kDemos), kDemos[s_nextDemo]);
@@ -112,13 +119,12 @@ void BeginPerfCapture()
     ps2::debug::FrameLogNoteOpens(true);
 
     // And every on-screen debug panel off: they cost EE time of their own, and the frame log
-    // carries every number they show. They are archived and not restored, so the config the
-    // run's quit writes keeps them off: set them back by hand afterwards.
-    Cvar_Set("ps2_show_fps", "0");
-    Cvar_Set("ps2_show_memstats", "0");
-    Cvar_Set("ps2_show_vramstats", "0");
-    Cvar_Set("ps2_show_drawstats", "0");
-    Cvar_Set("ps2_show_profile", "0");
+    // carries every number they show. EndPerfCapture puts them back.
+    for (int i = 0; i < ps2::ArrayLength(kPanelCvars); ++i)
+    {
+        q_strlcpy(s_panelValues[i], Cvar_VariableString(kPanelCvars[i]), sizeof(s_panelValues[i]));
+        Cvar_Set(kPanelCvars[i], "0");
+    }
 }
 
 void EndPerfCapture()
@@ -126,6 +132,12 @@ void EndPerfCapture()
     // The frame log writes in batches, so the tail of the run is still buffered. This also marks
     // the end, which is what tells a completed capture apart from one the emulator cut short.
     ps2::debug::FrameLogFinish();
+
+    // The panels as they were, for the config the quit writes. Nothing is measured from here on.
+    for (int i = 0; i < ps2::ArrayLength(kPanelCvars); ++i)
+    {
+        Cvar_Set(kPanelCvars[i], s_panelValues[i]);
+    }
 
     // Through the command buffer, so the quit runs at the top of the next frame, from where
     // Host_Shutdown takes everything down in the usual order.
