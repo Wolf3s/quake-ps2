@@ -75,7 +75,14 @@ The engine still builds the text (`Key_WriteBindings`, `Cvar_WriteVariables`, in
 
 - **Write:** `<gamedir>/config.cfg` only when running from `host:` (**never** to `mass:` or
   `pfs0:`), plus `mc0:/Q1PS2/config.cfg` whenever saves go to the card. The card write is
-  skipped when unchanged. QuakeSpasm sorts its cvars, so an unchanged setup writes the same bytes.
+  skipped when unchanged.
+- **The text is deterministic**, which is what lets the repo track `id1/config.cfg`: binds in
+  key-number order, then the archived cvars in their name-sorted list, each as the string it was
+  set to, then `vid_restart`. A config in gives the same bytes out, from the debug and the
+  release build alike (2026-10-12). What the builds differ in is the defaults of the debug
+  panels (`ps2_debug_overlays`, `ps2_show_*`: on in debug, off in release), which only show
+  in a config written without those lines. Code that sets an archived cvar for its own
+  purposes puts it back before a quit (the perf capture does, `perf_run.cpp`).
 - **Read:** emulator = the host file first, the card as fallback. Console = **the card first**,
   then the game data's `id1/config.cfg`. `exec config.cfg` and the early reads
   (`ReadConfigCvars`, for `ps2_fb_16bit` at `VID_Init` and `in_keyboard` at `IN_Init`) follow

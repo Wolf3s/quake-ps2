@@ -404,6 +404,11 @@ file. QuakeSpasm writes the config on quit, which a console rarely sees, so leav
 menu writes it too; the card copy is only rewritten when it changed. A card that is missing or
 full just skips it, with a line on the console.
 
+The repository tracks `id1/config.cfg`, the settings a run under the emulator starts from. The text
+the game writes is deterministic: the binds in key order, the archived cvars sorted by name, each
+as it was set. So a run that changes no setting writes the file back byte for byte, and `git status`
+shows when one did.
+
 ---
 
 ## Source layout

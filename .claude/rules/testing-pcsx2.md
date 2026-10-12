@@ -49,10 +49,13 @@
   sticks moving the player, and start the test in a map (`map e1m1` in `autoexec.cfg`): over the
   attract demo the camera is the demo's. Ask the user to close the PCSX2 window at the end
   rather than quit from the menu (see below).
-- Runs read and rewrite `id1/config.cfg` (gitignored; QuakeSpasm writes it on quit).
-  **Back it up before a scripted or perf run and restore it after.** Start every run of a
-  comparison from the same config. The main menu's Quit exits at once, writing it and
-  `build/<config>/history.txt` (the console history): clean both up after a user's test that
+- Runs read and rewrite `id1/config.cfg` (QuakeSpasm writes it on quit). It is tracked, and an
+  unchanged setup writes it back byte for byte (debug and release, checked 2026-10-12), so
+  `git diff id1/config.cfg` after a run shows what the run changed. **Restore it with
+  `git checkout id1/config.cfg` after a scripted run that set an archived cvar**, unless the change
+  is the point. Check `git status` first: an uncommitted edit of the user's would be lost. Start
+  every run of a comparison from the same config. The main menu's Quit exits at once, writing it
+  and `build/<config>/history.txt` (the console history): clean both up after a user's test that
   quit that way.
 
 ## Scripting a session

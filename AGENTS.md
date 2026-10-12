@@ -45,6 +45,10 @@ none of id's maps sets it, so it stays a future exercise for custom maps.
 `pak1.pak`. `make run` symlinks `build/<config>/id1` to it, since PCSX2's `host:` is the ELF's
 directory. Engine output carries a `[Q1]` prefix in the PCSX2 log.
 
+`id1/config.cfg` is the one tracked file there: the settings every run starts from. The game
+rewrites it on quit, and an unchanged setup writes the same bytes, so `git status` shows when a run
+changed a setting. Commit a changed default on purpose, not as fallout from a test.
+
 ## Build and verify
 
 - **`make` is the compile check.** It is fast, uses the real flags (the full GCC-only warning

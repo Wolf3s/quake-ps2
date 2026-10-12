@@ -14,8 +14,11 @@
 build/*
 !build/dummy.txt
 
-# Quake game data (id1/pak0.pak, config.cfg, saves), not part of this repository.
+# Quake game data (id1/pak0.pak, saves), not part of this repository. id1/config.cfg is: the
+# settings every run starts from. The game rewrites it on quit, byte for byte unless a setting
+# changed, so git status shows when a run changed one.
 id1/*
+!id1/config.cfg
 
 # Release packages:
 github_rel_*/
