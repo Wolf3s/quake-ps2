@@ -57,6 +57,9 @@ struct ModelDraw
     int               numSurfaces;
 };
 
+// Registers the cvars the build reads (ps2_st_rebase). R_Init calls it.
+void Init();
+
 // Builds the lightmaps and the draw data of every brush model the map precached
 // (cl.model_precache), freeing the previous map's. R_NewMap calls it.
 void BuildForNewMap();

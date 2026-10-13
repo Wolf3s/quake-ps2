@@ -91,6 +91,7 @@ void R_Init()
     Cvar_RegisterVariable(&r_clearcolor);
     Cvar_SetCallback(&r_clearcolor, ClearColorChanged);
 
+    ps2::brush::Init();
     ps2::view::Init();
     ps2::alias::Init();
     ps2::sky::Init();

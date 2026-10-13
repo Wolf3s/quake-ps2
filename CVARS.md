@@ -27,6 +27,7 @@ More come back as each subsystem is ported.
 | `in_rumbledebug` | 0 | 0 | | Prints each rumble effect as it starts, with its motor speeds and durations. |
 | `ps2_mip_filter` | bilinear | bilinear | Arch. | How the walls filter, as QuakeSpasm's `gl_texturemode` does: `nearest`, `bilinear` (between texels, the nearest mip level) or `trilinear` (between levels too, at twice the texture reads). Live. |
 | `ps2_mip_bias` | 0 | 0 | Arch. | Shifts the mip levels the walls sample, in levels; positive is blurrier. The GS picks a level by depth alone, so floors seen at a grazing angle come out sharper than their texel density calls for. Live. |
+| `ps2_st_rebase` | 1 | 1 | Arch. | Moves each wall face's texture coordinates by whole repeats so the smallest starts in [0, 1). id's projection gives them relative to the texture's world origin, tens of repeats out, and a console's GS loses precision on large values: walls drew stretched or swam on the Quake II port's hardware runs. The same texels are sampled either way; 0 keeps id's coordinates. Applies on the next map load. |
 | `ps2_debug_overlays` | 1 | 0 | Arch. | Master switch for the debug panels below, all but the FPS counter. Each panel also has its own switch. |
 | `ps2_show_fps` | 1 | 0 | Arch. | FPS counter, top right: green while every frame made its vsync, yellow once one missed, red at half the refresh rate or below. |
 | `ps2_show_profile` | 1 | 0 | Arch. | Frame times per profiled event, under the FPS counter. Draws in profile builds only. |

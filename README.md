@@ -248,7 +248,9 @@ implements those directly, with no GL underneath. All of it draws but fog, which
   QuakeSpasm's orientations, unlit, their holes cut by the alpha test; particles as QuakeSpasm's
   discs (or squares, `r_particles 2`), each a GS sprite VU1 expands, growing with distance.
 - **Draw data** ([brush.cpp](src/ps2/renderer/brush.cpp)): every brush surface's vertices,
-  baked as the VU1 path takes them when a map loads, and the lightmaps
+  baked as the VU1 path takes them when a map loads, each wall's texture coordinates moved by
+  whole repeats to start near zero (a console's GS loses precision on large ones;
+  `ps2_st_rebase`), and the lightmaps
   ([lightmap.cpp](src/ps2/renderer/lightmap.cpp)): 256x256 atlases of one byte per luxel,
   rebuilt when a light style moves or a dynamic light reaches them.
 - **Textures** ([texmgr.cpp](src/ps2/renderer/texmgr.cpp)): the BSP's textures stay on the

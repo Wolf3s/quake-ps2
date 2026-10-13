@@ -29,6 +29,11 @@ namespace {
 // at full alpha. The passes that want another colour put it on as they copy.
 constexpr u32 kModulateIdentity = vu1::PackColorRGBA(128, 128, 128, 0x80);
 
+// ps2_st_rebase: whether each face's wall texture coordinates move by whole repeats to start near
+// zero (see BakeSurfacePolygon). Read as a map's draw data is built, so a change applies on the
+// next map load.
+static cvar_t s_rebaseWallSt = ps2::MakeCvar("ps2_st_rebase", "1", CVAR_ARCHIVE);
+
 // The brush models with draw data of their own - the world and the separately loaded .bsp models
 // (the ammo and health boxes) - so the next map can free them. A map precaches a handful.
 constexpr int kMaxModelDraws = 64;
@@ -251,7 +256,7 @@ SurfaceDraw MeasureSurface(const qmodel_t & model, const msurface_t & surf)
 // A surface's convex polygon, with QuakeSpasm's BuildSurfaceDisplayList texture coordinates: the
 // diffuse ones normalized by the texture's size on disk, the lightmap ones placed in the surface's
 // atlas block, at luxel centres.
-void BakeSurfacePolygon(const qmodel_t & model, const msurface_t & surf, vu1::DrawVertex * out)
+void BakeSurfacePolygon(const qmodel_t & model, const msurface_t & surf, vu1::DrawVertex * const verts)
 {
     const mtexinfo_t & texinfo = *surf.texinfo;
     const float sdiv = static_cast<float>(texinfo.texture->width);
@@ -261,6 +266,7 @@ void BakeSurfacePolygon(const qmodel_t & model, const msurface_t & surf, vu1::Dr
     constexpr float kAtlasS = 1.0f / static_cast<float>(lm::kAtlasWidth  * lm::kLuxelSizeUnits);
     constexpr float kAtlasT = 1.0f / static_cast<float>(lm::kAtlasHeight * lm::kLuxelSizeUnits);
 
+    vu1::DrawVertex * out = verts;
     for (int i = 0; i < surf.numedges; ++i, ++out)
     {
         const float * const vec = SurfaceVertex(model, surf, i);
@@ -284,6 +290,32 @@ void BakeSurfacePolygon(const qmodel_t & model, const msurface_t & surf, vu1::Dr
         {
             out->lightmap_s = 0.0f;
             out->lightmap_t = 0.0f;
+        }
+    }
+
+    // Whole repeats off the wall texture's coordinates, so the face's smallest lands in [0, 1).
+    // id's projection gives them relative to the texture's world origin, so they grow with the
+    // distance from it, and a console's GS keeps fewer bits of S and T than PCSX2's renderer does:
+    // on the Quake II port's console runs, walls with large coordinates drew stretched and warped,
+    // or swam as the camera moved (quake2-ps2 a1d110f). Every wall wraps with REPEAT, so a shift by
+    // whole repeats samples exactly the same texels, and the GS picks mip levels by depth alone.
+    // Only the wall texture moves: the lightmap coordinates address an atlas and are small already.
+    if (s_rebaseWallSt.value != 0.0f && surf.numedges > 0)
+    {
+        float minS = verts[0].s;
+        float minT = verts[0].t;
+        for (int i = 1; i < surf.numedges; ++i)
+        {
+            minS = (verts[i].s < minS) ? verts[i].s : minS;
+            minT = (verts[i].t < minT) ? verts[i].t : minT;
+        }
+
+        const float shiftS = math::Floorf(minS);
+        const float shiftT = math::Floorf(minT);
+        for (int i = 0; i < surf.numedges; ++i)
+        {
+            verts[i].s -= shiftS;
+            verts[i].t -= shiftT;
         }
     }
 }
@@ -349,6 +381,11 @@ void FreeModelDraws()
 }
 
 } // namespace
+
+void Init()
+{
+    Cvar_RegisterVariable(&s_rebaseWallSt);
+}
 
 void BuildForNewMap()
 {

@@ -109,6 +109,15 @@ the world, the entity passes, the glows), `brush.cpp` (per-surface draw data, bu
   (`srcWidth`/`srcHeight`) over the extent. A *tiling* non-POT texture needs resampling on
   load (the walls are), not a coordinate scale. The 2D path uses `PRIM_MAP_UV` texel
   coordinates and is unaffected.
+- **Keep S/T small: a console's GS loses precision on large values, and PCSX2 doesn't.** id's
+  wall projection gives coordinates relative to the texture's world origin. *(Q2)* In base2 a
+  face's largest |S| or |T| had a median of 13.5 repeats and a max of 160. On hardware some walls
+  drew stretched and warped, and others swam as the camera moved; PCSX2's renderer showed none
+  of it. Shifting each face's coordinates by whole repeats so the smallest lands in [0, 1) fixed
+  them, confirmed on a console 2026-10-10, with the guard band at its usual 0.8. Here
+  `brush.cpp`'s `BakeSurfacePolygon` does the same (`ps2_st_rebase`, 2026-10-13). Under REPEAT
+  it samples the same texels, mip levels included. Anything new that sends large S/T is a
+  candidate for the same artifacts.
 - **Skins and sprite frames are copied with their rows padded to 16 texels**, as draw.cpp's
   pics are: the upload sends `w*h` texels in whole quadwords, and 16 of the 61 shareware models
   have a `w*h` that isn't a multiple of 16 (308x149, 300x194, ...). The padding repeats each
