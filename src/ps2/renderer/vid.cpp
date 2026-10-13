@@ -11,6 +11,7 @@
 
 #include "ps2/common.h"
 #include "ps2/engine_hooks.h"
+#include "ps2/debug/log_file.h"
 #include "ps2/system/sys.h"
 #include "ps2/system/heap.h"
 #include "ps2/renderer/render_system.h"
@@ -91,8 +92,10 @@ cvar_t vid_contrast = ps2::MakeCvar("contrast", "1", CVAR_ARCHIVE);
 
 void VID_Init()
 {
-    // The backend's own console commands; see RegisterCommands for why here.
+    // The backend's own console commands; see RegisterCommands for why here. ps2_logfile too,
+    // which the log's backlog waits on (debug/log_file.h).
     ps2::sys::RegisterCommands();
+    ps2::debug::LogFileRegisterCvar();
     ps2::save::Init();
     ps2::test::RegisterPerfTestCvar();
 #if PS2_QUAKE_DEBUG

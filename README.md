@@ -162,17 +162,50 @@ mass:/QUAKE/
 ```
 
 - **Where it looks.** Boot looks for `id1/pak0.pak` on `host:` first, which fails at once on a
-  console, then on the HDD, then over USB. On both, the folder the ELF was launched from is tried
-  before the drive's root. On the HDD the launch partition goes first, then the other partitions; over
-  USB every FAT volume is tried (`mass0:` to `mass9:`, one per partition), after waiting up to 10
-  seconds for the drive to come up. The storage, keyboard and sound drivers are embedded in the ELF,
-  so nothing else needs installing.
+  console. An ELF launched from USB (`mass:`) then looks over USB only, and leaves the HDD alone;
+  launched from anywhere else, it looks on the HDD, then over USB. On both, the folder the ELF was
+  launched from is tried before the drive's root. On the HDD the launch partition goes first, then the
+  other partitions; over USB every FAT volume is tried (`mass0:` to `mass9:`, one per partition), after
+  waiting up to 10 seconds for the drive to come up. The storage, keyboard and sound drivers are
+  embedded in the ELF, so nothing else needs installing.
+- **The IOP is taken as the launcher left it.** Each IOP driver the game needs (iomanX and fileXio,
+  the HDD's and USB's, and later the pad, memory card, sound and keyboard drivers) is reused when the
+  launcher left one doing that job running, and loaded otherwise, so a USB drive the launcher has
+  already mounted is read at once. The IOP is reset first only when something running can't work
+  alongside the game's drivers, and the boot falls back to that reset when a driver won't start, when
+  no game data turns up through the launcher's drivers, or when too little IOP memory is left.
+  `-DPS2_QUAKE_ALWAYS_RESET_IOP=1` in `CONFIG_DEFS` resets on every boot. The `IOP boot:` lines, in
+  the log file and from `ps2_dump_iop_mods`, say what the launcher left running, what was reused,
+  loaded or reset, and when each step finished.
 - **If it finds nothing**, the error screen shows the path the loader passed, the folders it searched,
   the HDD's status and the USB volumes it mounted.
+- **A log on the drive.** A console run has no stdout anyone can read: `ps2_logfile 1` (in
+  `id1/autoexec.cfg`, or at the console) writes `quake.log` next to `id1/`. See
+  [Debugging commands](#debugging-commands).
 - **Saves and settings go to the memory card** in slot 1 (see [Save games](#save-games)), never to
   the USB drive or the HDD.
 - **The debug ELF** (`build/debug/quake.elf`) runs the same way, with assertions on and the debug
   overlays showing.
+
+**Trying the console's storage in PCSX2.** With `HostFs = false` the boot takes the console's path.
+For USB, give PCSX2 a writable raw disk image with an MBR and a FAT32 partition (not an ISO), with
+`id1/` at its root:
+
+```ini
+[USB2]
+Type = Msd
+Msd_subtype = 0
+Msd_ImagePathMsd = /absolute/path/to/quake-usb.img
+```
+
+On macOS, `hdiutil create -size 64m -fs 'MS-DOS FAT32' -layout MBRSPUD -volname Q1PS2 -srcfolder
+<folder holding id1/> -format UDTO -nospotlight quake-usb.cdr` makes one (rename the `.cdr` to
+`.img`). Size it for the paks: 64 MB holds the shareware `pak0.pak`. `hdiutil attach -imagekey
+diskimage-class=CRawDiskImage quake-usb.img` mounts it afterwards, to read the `quake.log` a run
+left there. `[DEV9/Hdd]` `HddEnable` and `HddFile` attach an HDD image the same way. PCSX2 launches
+the ELF with a `host:` path, so the boot searches the HDD before USB, as it would for an ELF
+launched from the HDD. PCSX2 doesn't model either drive's speed, so its load times say nothing
+about a console's.
 
 ### Debugging commands
 
@@ -180,9 +213,21 @@ mass:/QUAKE/
 | --- | --- |
 | `ps2_memstats` | Prints the backend's memory tags, and dlmalloc's arena, in-use, untagged-malloc and free totals. |
 | `hunk_print` | QuakeSpasm's own: prints the hunk by block, with what remains. |
-| `ps2_dump_iop_mods` | Lists the IOP modules currently loaded. |
+| `ps2_dump_iop_mods` | Prints the boot's `IOP boot:` report, lists the IOP modules loaded now, and says how much IOP memory is free in one block. |
 | `screenshot` | QuakeSpasm's own, TGA only: reads the last frame back out of GS VRAM and writes `id1/spasmNNNN.tga`. |
 | `ps2_saveinfo` | Says where saves are going, and lists the memory card's save directory. |
+
+**The log file.** `ps2_logfile 1` copies everything the console prints, plus a `Sys_Error` and the
+debug build's EE exception report, to `quake.log` next to `id1/`: `build/<config>/quake.log` on
+`host:`, the game data's folder on the HDD or the USB drive. It opens with the boot report. Each
+line is stamped with the seconds since `main()` began. The configs that can turn the log on only run
+once `Host_Init` is done, so until it is on, the first 16 KB of output waits in RAM and goes in
+first: a log turned on from `autoexec.cfg` or the console still starts at boot. Every write opens,
+appends to and closes the file. On a FAT drive the close is the only flush (bdmfs_fatfs has no
+sync), so a run that hangs or crashes still leaves its log up to the last line. On the HDD each
+close is followed by a `fileXioSync` of the mounted partition. On the Quake II port's console that
+cost about 23 ms a line over USB, so a load timed with the log on mostly measures the log. A write
+that fails turns logging off, with a warning on stdout.
 
 Unattended tests are armed by cvars (see [CVARS.md](CVARS.md)). `ps2_testmaps 1` (debug builds)
 loads every level in the paks in turn (the campaign in play order, then the deathmatch maps) and
@@ -436,7 +481,7 @@ src/
     math/               vector/matrix math for the renderer
     net/                the network driver table (loopback only)
     save/               save games on the memory card
-    debug/              on-screen error printing, stack traces, EE exception handling
+    debug/              on-screen error printing, the log file, stack traces, EE exception handling
     tests/              standalone bring-up scenes and tests
   tools/
     host/               host-side command line tools (unpak, musenc)

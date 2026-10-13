@@ -19,6 +19,7 @@
 
 #if PS2_QUAKE_DEBUG
 #include "ps2/debug/exception_handler.h"
+#include "ps2/debug/log_file.h"
 #include "ps2/debug/stack_trace.h"
 #include "ps2/debug/scr_print.h"
 
@@ -209,8 +210,8 @@ void AppendUnwind(const char * const from, const u32 pc, const u32 sp)
     }
     Append("%s", "Resolve the addresses against quake_unstripped.elf.\n");
 
-    // TODO: Log to file when we have one. Log should be exception safe and fault tolerant.
-    //LogFileWrite(s_report);
+    // The log first: on a console it is the record that outlives this.
+    LogFileWriteFatal(s_report);
 
     // A fault on another thread leaves the main one running, and its next frame would draw over
     // the report. Stopped only now, after the log write, since it may have held a lock that the

@@ -10,6 +10,7 @@
 #include "ps2/common.h"
 #include "ps2/system/sys.h"
 #include "ps2/system/iop_boot.h"
+#include "ps2/debug/log_file.h"
 #include "ps2/debug/scr_print.h"
 #include "ps2/debug/profile.h"
 #include "ps2/renderer/profile.h"
@@ -92,8 +93,11 @@ double Seconds()
 
 void RegisterCommands()
 {
+    // What the boot found and did, then what runs on the IOP now, and its memory left.
     Cmd_AddCommand("ps2_dump_iop_mods", []() {
+        PrintIopBootReport(&Con_Printf);
         PrintLoadedIopModules(40, &Con_Printf);
+        Con_Printf("IOP memory: %d KB free in one block.\n", LargestFreeIopBlockBytes() / 1024);
     });
 
     // The program's memory as the backend sees it. QuakeSpasm's hunk is a single Hunk-tagged
@@ -202,11 +206,17 @@ char LogChar(const unsigned char glyph)
 }
 
 // Writes 'text' to stdout with "[Q1] " at the start of every line, so engine output can be told
-// from the emulator's in the PCSX2 log. QuakeSpasm often prints a line in several pieces, so the
-// prefix goes where a line starts, not once per call.
-void PrintToLog(const char * text)
+// from the emulator's in the PCSX2 log, and to the log file on the game data's drive
+// (debug/log_file.h) as it is, both with the console's glyphs made ASCII. QuakeSpasm often prints
+// a line in several pieces, so the prefix goes where a line starts, not once per call. 'fatal' is
+// for Sys_Error's text, which takes the log's fatal path.
+void PrintToLog(const char * text, const bool fatal = false)
 {
     static bool s_atLineStart = true;
+
+    // What the log file gets: the same characters, without the prefix. Sys_Printf's text fits.
+    char logText[2048];
+    int  logLength = 0;
 
     LogWriter writer;
     for (const char * s = text; *s != '\0'; ++s)
@@ -230,12 +240,27 @@ void PrintToLog(const char * text)
             s_atLineStart = true;
         }
         writer.Put(c);
+
+        if (logLength < static_cast<int>(sizeof(logText)) - 1)
+        {
+            logText[logLength++] = c;
+        }
     }
 
     writer.Flush();
     if (s_atLineStart)
     {
         std::fflush(stdout);
+    }
+
+    logText[logLength] = '\0';
+    if (fatal)
+    {
+        ps2::debug::LogFileWriteFatal(logText);
+    }
+    else
+    {
+        ps2::debug::LogFileWrite(logText);
     }
 }
 
@@ -317,12 +342,12 @@ void Sys_Error(const char * error, ...)
     std::vsnprintf(text, sizeof(text), error, argptr);
     va_end(argptr);
 
-    // Also to the log, so a capture says why the run stopped. No Host_Shutdown, unlike
-    // QuakeSpasm's desktop Sys_Error: it would write config.cfg out of whatever state the
-    // error left the engine in.
-    PrintToLog("\nSys_Error: ");
-    PrintToLog(text);
-    PrintToLog("\n");
+    // Also to stdout and the log file, so a capture or a console's log says why the run
+    // stopped. No Host_Shutdown, unlike QuakeSpasm's desktop Sys_Error: it would write
+    // config.cfg out of whatever state the error left the engine in.
+    PrintToLog("\nSys_Error: ", /*fatal=*/true);
+    PrintToLog(text, /*fatal=*/true);
+    PrintToLog("\n", /*fatal=*/true);
 
     ps2::debug::ScrInit();
     ps2::debug::ScrSetTextColor(0xFF0000FF); // red text

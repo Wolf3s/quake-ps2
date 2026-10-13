@@ -87,12 +87,14 @@ The engine still builds the text (`Key_WriteBindings`, `Cvar_WriteVariables`, in
   then the game data's `id1/config.cfg`. `exec config.cfg` and the early reads
   (`ReadConfigCvars`, for `ps2_fb_16bit` at `VID_Init` and `in_keyboard` at `IN_Init`) follow
   the same order. On a console that starts the card driver during `VID_Init`, ahead of the pad's;
-  `LoadRomModuleOnce` keeps SIO2MAN to one copy, and the pad still comes up locked in analog
-  mode with its motors.
+  `iop_boot.cpp` keeps SIO2MAN to one copy (`StartMemoryCardDriver`, `StartPadDriver`), and the
+  pad still comes up locked in analog mode with its motors.
 - An archived cvar that a run never registers is dropped from the file (id's behaviour): a
   `set` creates it with no flags. So **register every `CVAR_ARCHIVE` cvar in every build**,
   outside any `PS2_QUAKE_DEBUG`/`PS2_QUAKE_PROFILE` gate, even if nothing reads it there.
-- The console branch is only host-tested: this setup can't boot from `mass:`.
+- The console branch's config read has run in PCSX2, booted off a USB image with `HostFs` off
+  (2026-10-13, see testing-pcsx2.md): the card first, then the drive's `id1/config.cfg`. Saving
+  on that path is still untested.
 
 ## Testing
 

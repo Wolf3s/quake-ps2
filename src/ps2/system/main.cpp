@@ -9,8 +9,10 @@
 
 #include "ps2/common.h"
 #include "ps2/system/iop_boot.h"
+#include "ps2/system/sys.h"
 #include "ps2/renderer/profile.h"
 #include "ps2/debug/exception_handler.h"
+#include "ps2/debug/log_file.h"
 #include "ps2/tests/map_cycle.h"
 #include "ps2/tests/perf_run.h"
 
@@ -75,6 +77,10 @@ int main(int argc, char ** argv)
     // tags add up to stays a faithful picture of the console's 32MB.
     ps2::heap::TagsAddSystemMem();
 
+    // ps2::sys::Milliseconds counts from its first call. Made here, it puts every log line's stamp
+    // and the IOP boot report's times against the start of main(), the boot included.
+    ps2::sys::Milliseconds();
+
     // Locate the game data - host: under PCSX2, USB mass: on a real console (which needs
     // the IOP module bring-up) - before Host_Init, whose COM_InitFilesystem opens the pak
     // files. A build with -DPS2_FS_BASE_PATH=\"...\" pins the base path and skips the
@@ -84,6 +90,11 @@ int main(int argc, char ** argv)
 #else // PS2_FS_BASE_PATH
     const char * const basedir = ps2::sys::DetectBasePathAndBootIop((argc > 0) ? argv[0] : nullptr);
 #endif // PS2_FS_BASE_PATH
+
+    // The log on the game data's drive (ps2_logfile), opening with what the boot found and did:
+    // the report's lines reached stdout as they happened, and go to the log alone.
+    ps2::debug::LogFileOpen(basedir);
+    ps2::sys::PrintIopBootReport(&ps2::debug::LogFilePrintf);
 
     BuildArgv(argc, argv);
 

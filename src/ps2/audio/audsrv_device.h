@@ -58,8 +58,8 @@ public:
     int Enqueue(const u8 * data, int sizeBytes);
 
 private:
-    // libsd.irx -> audsrv.irx -> audsrv_init(). One-shot: re-running any of it would
-    // fail the module load and leak the EE-side RPC thread audsrv_init() spawns.
+    // The IOP's sound driver (ps2::sys::StartSoundDriver), then audsrv_init(). One-shot:
+    // a second audsrv_init() would leak the EE-side RPC thread it spawns.
     static bool StartIopSide();
 
     bool m_ready      = false;

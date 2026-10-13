@@ -116,6 +116,7 @@ PS2_CXX_SRC =                         \
 	ps2/debug/stack_trace.cpp         \
 	ps2/debug/pipeline_dump.cpp       \
 	ps2/debug/exception_handler.cpp   \
+	ps2/debug/log_file.cpp            \
 	ps2/debug/profile.cpp
 
 # Doug Lea's allocator: vendored third-party C, left as C on purpose (see the
@@ -169,6 +170,7 @@ SIZE_OPT_CXX_SRC =                    \
 	ps2/debug/stack_trace.cpp         \
 	ps2/debug/pipeline_dump.cpp       \
 	ps2/debug/exception_handler.cpp   \
+	ps2/debug/log_file.cpp            \
 	ps2/debug/profile.cpp
 
 SIZE_OPT_OBJS = $(addprefix $(OUTPUT_DIR)/$(SRC_DIR)/, $(SIZE_OPT_CXX_SRC:.cpp=.o))
