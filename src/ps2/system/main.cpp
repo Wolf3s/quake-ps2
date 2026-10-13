@@ -11,6 +11,7 @@
 #include "ps2/system/iop_boot.h"
 #include "ps2/system/sys.h"
 #include "ps2/renderer/profile.h"
+#include "ps2/renderer/splash_screen.h"
 #include "ps2/debug/exception_handler.h"
 #include "ps2/debug/log_file.h"
 #include "ps2/tests/map_cycle.h"
@@ -80,6 +81,10 @@ int main(int argc, char ** argv)
     // ps2::sys::Milliseconds counts from its first call. Made here, it puts every log line's stamp
     // and the IOP boot report's times against the start of main(), the boot included.
     ps2::sys::Milliseconds();
+
+    // The QUAKE plaque, on screen within milliseconds, while the IOP drivers come up and the game
+    // data is found, which can take seconds on a console. It stays up until the game's first frame.
+    ps2::splash::Show();
 
     // Locate the game data - host: under PCSX2, USB mass: on a real console (which needs
     // the IOP module bring-up) - before Host_Init, whose COM_InitFilesystem opens the pak

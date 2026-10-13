@@ -8,14 +8,17 @@
  *        Each pic is a qpic_t of our own carrying its texture's pointer where the pixels would
  *        start, as gl_draw.c kept its glpic_t there. WAD pics under 64x64 are packed into the
  *        scrap atlases, as QuakeSpasm does; every other pic is copied into a block the upload
- *        DMA can read (see MakeStandalone). The pics bypass TexMgr: nothing outside this file
- *        sees their textures, so the engine's texture manager has nothing to manage for them.
+ *        DMA can read (see MakeStandalone), but for the QUAKE plaque: the ELF carries it for the
+ *        boot splash (src/ps2/builtin), and the menus draw it from there. The pics bypass TexMgr:
+ *        nothing outside this file sees their textures, so the engine's texture manager has
+ *        nothing to manage for them.
  *
  * This source code is released under the GNU GPL v2 license.
  * ================================================================================================ */
 
 #include "ps2/common.h"
 #include "ps2/engine_hooks.h"
+#include "ps2/builtin/builtin.h"
 #include "ps2/renderer/draw.h"
 #include "ps2/renderer/render_system.h"
 #include "ps2/renderer/scrap_atlas.h"
@@ -123,6 +126,24 @@ void MakeStandalone(Pic & out, const char * name, const byte * src, const int wi
 
     out.pixels     = pixels;
     out.pixelBytes = bytes;
+    SetPicTexture(out, texture, width, height);
+}
+
+// A pic over pixels the ELF carries (src/ps2/builtin), drawn from where they lie when the upload
+// DMA can read them there - 16-byte aligned, rows a multiple of 16 texels - and from a copy when
+// it can't. The texture is MakeStandalone's (no built-in needs its index 0 cut out), minus the copy.
+void MakeBuiltin(Pic & out, const char * name, const byte * pixels, const int width, const int height)
+{
+    if ((reinterpret_cast<uintptr_t>(pixels) & 15u) != 0 || (width & 15) != 0)
+    {
+        MakeStandalone(out, name, pixels, width, height);
+        return;
+    }
+
+    Texture & texture = ps2::tex::Create(name, pixels, width, height, ps2::tex::PixelFormat::Palette8,
+                                         ps2::tex::TexComponents::RGBA, ps2::tex::ImageType::Pic);
+    out.pixels     = nullptr; // the ELF's, never freed
+    out.pixelBytes = 0;
     SetPicTexture(out, texture, width, height);
 }
 
@@ -275,6 +296,17 @@ qpic_t * CachePic(const char * path)
         Sys_Error("menu_numcachepics == MAX_CACHED_PICS");
     }
 
+    CachedPic & cached = s_cachedPics[s_numCachedPics++];
+    q_strlcpy(cached.name, path, sizeof(cached.name));
+
+    // The plaque the menus draw down their left is in the ELF already: the boot splash shows it
+    // before any game data is found. So this one is never read from the data, a mod's included.
+    if (std::strcmp(path, "gfx/qplaque.lmp") == 0)
+    {
+        MakeBuiltin(cached.pic, path, qplaque_data, qplaque_width, qplaque_height);
+        return &cached.pic.pic;
+    }
+
     qpic_t * const lump = static_cast<qpic_t *>(static_cast<void *>(COM_LoadTempFile(path, nullptr)));
     if (lump == nullptr) [[unlikely]]
     {
@@ -282,8 +314,6 @@ qpic_t * CachePic(const char * path)
     }
     SwapPic(lump);
 
-    CachedPic & cached = s_cachedPics[s_numCachedPics++];
-    q_strlcpy(cached.name, path, sizeof(cached.name));
     MakeStandalone(cached.pic, path, lump->data, lump->width, lump->height);
 
     // The one pic Draw_TransPicTranslate recolours keeps its pixels as they came.

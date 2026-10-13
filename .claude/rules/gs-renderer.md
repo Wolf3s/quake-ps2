@@ -11,7 +11,8 @@ bracket, the screenshot readback), `draw.cpp` (`Draw_*`), `texmgr.cpp` (`TexMgr_
 `refresh.cpp` (`R_*`). Under them, from the Quake II port: `render_system.*` (`ps2::rs`: VIF1
 chains, batches, `DrawTriangles`, `Submit`), `cmd_buffer.*`, `gs.*` (GS front-end, register
 values, 2D, readback), `vram.*` (texture heap), `texture.*` (`ps2::tex`), `scrap_atlas.*`,
-`vu1.*` (VU memory layout, microprogram declarations). The 3D view: `view.cpp` (`R_RenderView`:
+`splash_screen.*` (the boot splash, drawn before the renderer exists), `vu1.*` (VU memory
+layout, microprogram declarations). The 3D view: `view.cpp` (`R_RenderView`:
 the world, the entity passes, the glows), `brush.cpp` (per-surface draw data, built by
 `R_NewMap`), `lightmap.cpp`, `alias.cpp` (MDL models), `sprite.cpp`, `particles.cpp` and
 `sky.cpp`. VU1 clips everything: the Quake II port's EE clipper (`clip.*`) went with its sky.
@@ -49,6 +50,13 @@ the world, the entity passes, the glows), `brush.cpp` (per-surface draw data, bu
   (`DrawLoadingScreen` in vid.cpp), so each is on screen before the call returns. They skip
   `GL_BeginRendering`'s profiler rollover and the overlays, and nothing is drawn while a frame is
   open (`rs::IsFrameOpen`): a file read from inside a frame leaves the screen as it is.
+- **Framebuffer 0 is on screen from `gs::Init` until the first present** (the first frame is
+  drawn into frame 1), showing whatever VRAM holds there. The boot splash draws the QUAKE plaque
+  into exactly the default layout of frame 0 (640 wide, the standard's full height, 16-bit, at
+  VRAM 0), so it stays up through `gs::Init` until then. For any other layout `gs::Init` clears
+  frame 0 (`splash::IsShownIn`), and it turns the output on only once that is drawn. Checked in
+  PCSX2 (2026-10-13): the plaque read back pixel for pixel after `gs::Init`, and frame 0 came back
+  black with `ps2_video_mode pal` or `ps2_fb_16bit 0` on the NTSC BIOS.
 - **Never `Con_Printf` between `GL_BeginRendering` and `GL_EndRendering`.** While the client
   isn't in a game (console, menus, loading), each `Con_Printf` redraws the screen through
   `SCR_UpdateScreen`, which would open a frame inside the frame (`rs::BeginFrame` asserts).
@@ -115,6 +123,13 @@ the world, the entity passes, the glows), `brush.cpp` (per-surface draw data, bu
   On the VU, remember the last tag's address and OR in `0x8000` after the loop. Keep PRE=1 on
   each tag so the GS starts a new fan.
 - `draw_rect_textured` = 4 qwords per sprite. A full console of text is about 9K qwords.
+- **libdraw's sprites cover their far corner.** `draw_rect_textured` and `draw_rect_filled` add
+  `START_OFFSET` (2047.5625) to the near corner and `END_OFFSET` (2048.5625) to the far one, so a
+  rectangle from x to x + w covers w + 1 pixels, and its texels spread over that many. The splash
+  passes x + w - 1 and reads back exact 2x2 texels. `gs::EmitTexturedRect` passes x + w: every
+  2D pic and glyph draws a column and a row wider than its rectangle, the last repeating the one
+  before (the menus' 64x288 plaque covers 65x289, 5846 of its pixels off an exact 2x2 mapping;
+  measured 2026-10-13). Changing it changes every 2D draw, so it waits for a decision.
 
 ## Texture coordinates and sizes
 

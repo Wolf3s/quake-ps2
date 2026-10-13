@@ -8,7 +8,7 @@
 #    make release     -> optimized   -> build/release/quake.elf
 #    make run         -> build + launch in PCSX2  (VSCode: F5)
 #    make release run -> the same, with the release build
-#    make tools       -> build host tools (unpak, musenc, symbolize) into build/tools/
+#    make tools       -> build host tools (unpak, imgdump, musenc, symbolize) into build/tools/
 #    make music       -> encode id1/music/trackNN.wav into the trackNN.adp files the game streams
 #    make clean       -> remove build artifacts (both configs)
 #    make clean_vu    -> remove only assembled VU microprograms
@@ -111,6 +111,7 @@ PS2_CXX_SRC =                         \
 	ps2/renderer/refresh.cpp          \
 	ps2/renderer/overlays.cpp         \
 	ps2/renderer/loading_screen.cpp   \
+	ps2/renderer/splash_screen.cpp    \
 	ps2/tests/draw_cube.cpp           \
 	ps2/tests/map_cycle.cpp           \
 	ps2/tests/perf_run.cpp            \
@@ -123,7 +124,9 @@ PS2_CXX_SRC =                         \
 	ps2/debug/load_trace.cpp          \
 	ps2/debug/io_log.cpp              \
 	ps2/debug/debug_menu.cpp          \
-	ps2/debug/profile.cpp
+	ps2/debug/profile.cpp             \
+	ps2/builtin/palette.cpp           \
+	ps2/builtin/qplaque.cpp
 
 # Doug Lea's allocator: vendored third-party C, left as C on purpose (see the
 # note at the top of dlmalloc.c). Everything else of ours is C++.
@@ -171,6 +174,7 @@ SIZE_OPT_CXX_SRC =                    \
 	ps2/input/pad.cpp                 \
 	ps2/renderer/vid.cpp              \
 	ps2/renderer/loading_screen.cpp   \
+	ps2/renderer/splash_screen.cpp    \
 	ps2/tests/draw_cube.cpp           \
 	ps2/tests/map_cycle.cpp           \
 	ps2/tests/perf_run.cpp            \
@@ -237,7 +241,7 @@ MINIZ_OBJS     = $(addprefix $(OUTPUT_DIR)/miniz/, $(MINIZ_SRC:.c=.o))
 # are config-independent, so they live outside build/<config>/.
 HOST_TOOLS_PATH = $(SRC_DIR)/tools/host
 SCRIPTS_PATH    = $(SRC_DIR)/tools/scripts
-TOOLS_CXX_BINS  = $(addprefix $(BUILD_DIR)/tools/, unpak musenc)
+TOOLS_CXX_BINS  = $(addprefix $(BUILD_DIR)/tools/, unpak imgdump musenc)
 TOOLS_PY_BINS   = $(addprefix $(BUILD_DIR)/tools/, symbolize)
 TOOLS_BINS      = $(TOOLS_CXX_BINS) $(TOOLS_PY_BINS)
 HOST_CXX       ?= c++

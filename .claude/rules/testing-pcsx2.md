@@ -82,6 +82,11 @@
 - `-dedicated` doesn't work: QuakeSpasm stops with "Network not available!" when no driver but
   loopback comes up. A normal run's `map e1m1` already exercises the server, QuakeC and
   physics, with the client attached.
+- **A scratch run's own setting replaces the tracked `config.cfg` line, rather than following
+  it.** The boot-time reads (`ps2_video_mode` and `ps2_fb_16bit` at `VID_Init`, `in_keyboard` at
+  `IN_Init`) stop once they have found every name they look for, so a second line further down
+  is never read for them: `sed 's/^ps2_video_mode "auto"$/ps2_video_mode "pal"/'` into the copy
+  works, `echo ... >>` doesn't (2026-10-13).
 - Record the traps here as they turn up. The Quake II port's (a 128-char `COM_Parse` overrun,
   `wait`s queued across a map load) came from Quake II's code and may not apply.
 
@@ -132,6 +137,16 @@ The rest are scripted runs:
   at signon 0 (engine-c.md's `SV_SendReconnect` quirk), so end the script there. A build with
   `PS2_QUAKE_LOAD_TRACE` 1 (load_trace.h) traces the load into `quake.log`; on 2026-10-13 the
   e1m1 to e1m2 change drew 6 loading frames over 49 files and 2.8 MB in 1.8 s.
+- **The boot splash**: nothing scripted runs before the first frame replaces it, so a scratch
+  build queues the shot: `SCR_Init (); Cbuf_AddText ("screenshot\n"); Cbuf_Execute ();` in
+  `Host_Init` (host.c). No frame has been presented then, so `screenshot` reads frame 0, where
+  the splash is. Put host.c back and `touch` it afterwards. On 2026-10-13 the shot held the plaque
+  64x288 at (288, 80) on the NTSC BIOS, every pixel its texel's colour at `kColorIntensity`
+  through the 16-bit framebuffer, and was black with `ps2_video_mode pal` or `ps2_fb_16bit 0`
+  in the config (see the trap above). The splash logs `Splash: the QUAKE plaque is up (NTSC,
+  640x448) after 1 ms.` That the menus draw the ELF's plaque shows on a copy of pak0 rebuilt
+  without `gfx/qplaque.lmp`: the menus drew the same pixels, where the build before stopped with
+  `Draw_CachePic: failed to load gfx/qplaque.lmp`.
 - **Perf run** (profile builds): `ps2_perftest 1` in `autoexec.cfg` plays the demos, and
   `ps2_testmaps 2` tours every level; the recipes are in [performance.md](performance.md). Both
   quit at the end, which writes `config.cfg`, unless `ps2_test_quit` is 0.

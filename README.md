@@ -337,6 +337,17 @@ implements those directly, with no GL underneath. All of it draws but fog, which
   `ps2_gs_latency`. `SCR_UpdateScreen` draws each frame between `GL_BeginRendering`, which clears
   it to `r_clearcolor`, and `GL_EndRendering`, which submits it. By default the GS draws a
   finished frame while the EE builds the next one (`ps2_gs_latency`).
+- **Boot splash** ([splash_screen.h](src/ps2/renderer/splash_screen.h)). First thing in
+  `main()`, before any IOP driver comes up, the GS is set up the way `gs::Init` sets it up with
+  the default video settings, and the QUAKE plaque from the menus (`gfx/qplaque.lmp`) is drawn at
+  twice its size, centred on black and brightened by `kColorIntensity`, into what becomes the
+  first framebuffer. So it stays up through the IOP boot, the search for the game data and
+  `gs::Init`, until the game presents its first frame. When `ps2_video_mode` or `ps2_fb_16bit`
+  lay that framebuffer out differently, `gs::Init` starts it black instead, since it would read
+  the plaque's texels the wrong way. A splash that can't be drawn is skipped. The plaque and the
+  palette it draws through are compiled into the ELF ([src/ps2/builtin/](src/ps2/builtin/), made
+  by [imgdump](src/tools/host/imgdump.cpp)), and the menus draw that same copy: the file is never
+  read, a mod's own included.
 - **Palette.** Quake's textures stay 8-bit in VRAM (PSMT8) and sample `gfx/palette.lmp`
   through a CLUT, built once as the GS comes up.
 - **Command buffer.** A frame is one DMA chain to VIF1, built in a 1.5 MB block of two 768 KB
@@ -572,8 +583,9 @@ src/
     save/               save games on the memory card
     debug/              on-screen error printing, the log file, stack traces, EE exception handling
     tests/              standalone bring-up scenes and tests
+    builtin/            images compiled into the ELF (the QUAKE plaque, the palette), from imgdump
   tools/
-    host/               host-side command line tools (unpak, musenc)
+    host/               host-side command line tools (unpak, imgdump, musenc)
     scripts/            Python helpers (symbolize, compile_commands.json, frame logs)
     vclpp/              VCL preprocessor for the VU microprograms (git submodule)
     vu-checker/         openvcl/dvp-as output checks run by every VU build (git submodule)
