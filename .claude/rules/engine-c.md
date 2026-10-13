@@ -104,8 +104,16 @@ For the profiler (`ps2/debug/engine_profile.h`, compiled out of release builds):
 `Host_ServerFrame` (`Server`), `CL_RunParticles` (`ClParticles`) and the `S_Update` calls
 (`SndMix`) in probes, and `cl_main.c`'s `CL_ReadFromServer` its message loop (`ClParse`) and
 `CL_RelinkEntities`/`CL_UpdateTEnts` (`ClScene`). `common.c`'s `COM_FindFile` names each file it
-opens (not `COM_FileExists`' lookups) to the frame log, which writes it only during a perf run.
-The reads themselves are timed in the backend's `Sys_File*` (`FsIo`).
+opens (not `COM_FileExists`' lookups) through `PS2_FileOpening` (engine_hooks.h): to the frame log,
+which writes it only during a perf run, and to the loading screen. The reads themselves are timed
+in the backend's `Sys_File*` (`FsIo`).
+
+For loading (`engine_hooks.h`, `ps2/debug/load_trace.h`): `gl_screen.c` calls
+`PS2_LoadingScreenBegin` once the plaque is up in `SCR_BeginLoadingPlaque` (after its early
+returns), and `PS2_LoadingScreenEnd` in `SCR_EndLoadingPlaque` and at `SCR_UpdateScreen`'s
+timeout. The load trace's points, compiled out unless `PS2_QUAKE_LOAD_TRACE` is 1, sit beside
+QuakeSpasm's own `Con_DPrintf`s in `SV_SpawnServer` (sv_main.c), `CL_ParseServerInfo` (cl_parse.c)
+and `CL_SignonReply` (cl_main.c).
 
 For rumble: `view.c` calls `PS2_RumbleDamage` from `V_ParseDamage` and `PS2_RumblePickup` from
 `V_BonusFlash_f`. For the memory reports: `zone.c` adds `Cache_UsedBytes` (the cache's list is
@@ -198,5 +206,11 @@ Record QuakeSpasm quirks here as they are found.
   model into the cache: what it puts on the hunk then (the poses, in `hdr->vertexes`) goes with it.
 - QuakeSpasm writes `vid_restart` at the end of every `config.cfg`. The backend registers it as
   a no-op, as it does `vid_unlock`.
+- `SV_SendReconnect` runs `reconnect` on the local client at once, and sends it as a stufftext
+  too. In play the second copy runs mid-handshake, where resetting the signon is harmless. In a
+  script whose `wait`s hold the command buffer past a `changelevel`, it runs only when the waits
+  run out, after the level is up: the client drops to signon 0 under the plaque and stays there
+  until the 150 s timeout (seen 2026-10-13). End such a script with the `changelevel`, or wait
+  only before it.
 - QuakeSpasm keeps the entity lerp times (`lerpstart`, `movelerpstart`) in float, against the
   double `cl.time`; alias.cpp converts `cl.time` once per model and does that math in float.

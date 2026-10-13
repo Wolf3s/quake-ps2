@@ -13,6 +13,7 @@
  * ================================================================================================ */
 
 #include "ps2/common.h"
+#include "ps2/debug/load_trace.h"
 #include "ps2/renderer/alias.h"
 #include "ps2/renderer/brush.h"
 #include "ps2/renderer/profile.h"
@@ -101,8 +102,15 @@ void R_Init()
     Fog_Init();
 }
 
+#if PS2_QUAKE_LOAD_TRACE
+// Armed by R_NewMap, so the load trace ends with the first 3D view drawn after it.
+static bool s_traceFirstView = false;
+#endif // PS2_QUAKE_LOAD_TRACE
+
 void R_NewMap()
 {
+    PS2_LOAD_TRACE("R_NewMap: %s", cl.mapname);
+
     for (int i = 0; i < 256; ++i)
     {
         d_lightstylevalue[i] = 264; // normal light value
@@ -131,6 +139,11 @@ void R_NewMap()
 
     // A "FLOG#map" row, so the frame log scripts can split a capture by level.
     ps2::debug::FrameLogMarkMap(cl.mapname);
+
+    PS2_LOAD_TRACE("R_NewMap: done");
+#if PS2_QUAKE_LOAD_TRACE
+    s_traceFirstView = true;
+#endif // PS2_QUAKE_LOAD_TRACE
 }
 
 // A game switch: the player skin textures go, which TexMgr_NewGame has just freed.
@@ -147,6 +160,14 @@ void D_FlushCaches() {}
 
 void R_RenderView()
 {
+#if PS2_QUAKE_LOAD_TRACE
+    if (s_traceFirstView)
+    {
+        s_traceFirstView = false;
+        PS2_LOAD_TRACE("R_RenderView: the first 3D view since R_NewMap");
+    }
+#endif // PS2_QUAKE_LOAD_TRACE
+
     ps2::view::RenderView();
 }
 

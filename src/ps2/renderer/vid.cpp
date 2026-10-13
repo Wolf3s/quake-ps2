@@ -18,6 +18,7 @@
 #include "ps2/renderer/cmd_buffer.h"
 #include "ps2/renderer/texture.h"
 #include "ps2/renderer/texmgr.h"
+#include "ps2/renderer/loading_screen.h"
 #include "ps2/renderer/overlays.h"
 #include "ps2/renderer/profile.h"
 #include "ps2/tests/draw_cube.h"
@@ -26,6 +27,7 @@
 #include "ps2/tests/perf_run.h"
 
 #include <algorithm>
+#include <cstring>
 #include <utility>
 
 #include <gs_psm.h>
@@ -222,6 +224,54 @@ void GL_EndRendering()
 // QuakeSpasm's shader gamma pass, applied as the last step of every frame; nothing to do
 // without shaders.
 void GLSLGamma_GammaCorrect() {}
+
+} // extern "C"
+
+// ------------------------------------------------------------------------------------------------
+// The loading screen's frames (loading_screen.h)
+// ------------------------------------------------------------------------------------------------
+
+// The plaque, as SCR_DrawLoading draws it, and the status bar along the bottom: a line of console
+// text on a dark band, a few pixels up so a TV's overscan leaves it. The client draws nothing while
+// the plaque is up, so no later frame would put this one on screen: it is shown before returning,
+// whatever ps2_gs_latency says. Neither the view nor the status bar goes in, as the client's state
+// is being torn down and rebuilt under them; behind the plaque is r_clearcolor.
+bool ps2::loading::DrawLoadingScreen(const char * status)
+{
+    if (ps2::rs::IsFrameOpen())
+    {
+        return false;
+    }
+
+    ps2::rs::BeginFrame(/*dither=*/s_enableDither.value != 0.0f);
+    ps2::tex::ReleaseRetiredTextures();
+
+    GL_Set2D();
+    GL_SetCanvas(CANVAS_MENU);
+    qpic_t * const pic = Draw_CachePic("gfx/loading.lmp");
+    Draw_Pic((320 - pic->width) / 2, (240 - 48 - pic->height) / 2, pic);
+
+    constexpr int kGlyphSize = 8;
+    constexpr int kBarPadY   = 4;
+    constexpr int kBarColour = 4; // a dark grey in Quake's palette
+
+    GL_SetCanvas(CANVAS_DEFAULT);
+    const int barY = glheight - (kGlyphSize + kBarPadY);
+    Draw_Fill(0, barY, glwidth, kGlyphSize, kBarColour, 1.0f);
+
+    const int maxChars = glwidth / kGlyphSize;
+    const int numChars = std::min(static_cast<int>(std::strlen(status)), maxChars);
+    const int textX    = ((maxChars - numChars) / 2) * kGlyphSize;
+    for (int i = 0; i < numChars; ++i)
+    {
+        Draw_Character(textX + (i * kGlyphSize), barY, static_cast<unsigned char>(status[i]));
+    }
+
+    ps2::rs::EndFrame(/*deferPresent=*/false);
+    return true;
+}
+
+extern "C" {
 
 // ------------------------------------------------------------------------------------------------
 // Screenshots: what SCR_ScreenShot_f reads the screen with, and writes it out with

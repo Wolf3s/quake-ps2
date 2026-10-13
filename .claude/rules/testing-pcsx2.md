@@ -120,6 +120,12 @@ The rest are scripted runs:
   `ps2_logfile 1` in the image's `autoexec.cfg`, and read what the run left with `hdiutil attach
   -readonly -nobrowse -mountpoint <dir> -imagekey diskimage-class=CRawDiskImage <image>`, then
   `hdiutil detach <dir>`. Edit the ini only with PCSX2 closed, and restore it after.
+- **The loading screen**: the plaque only goes up over a game, so `map e1m1`, `w100`, then
+  `changelevel e1m2` and `screenshot` straight after it. Nothing draws while the plaque is up, so
+  the shot is the last loading screen frame. Waits after the `changelevel` leave the client stuck
+  at signon 0 (engine-c.md's `SV_SendReconnect` quirk), so end the script there. A build with
+  `PS2_QUAKE_LOAD_TRACE` 1 (load_trace.h) traces the load into `quake.log`; on 2026-10-13 the
+  e1m1 to e1m2 change drew 6 loading frames over 49 files and 2.8 MB in 1.8 s.
 - **Perf run** (profile builds): `ps2_perftest 1` in `autoexec.cfg` plays the demos, and
   `ps2_testmaps 2` tours every level; the recipes are in [performance.md](performance.md). Both
   quit at the end, which writes `config.cfg`.

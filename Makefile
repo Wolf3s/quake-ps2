@@ -109,6 +109,7 @@ PS2_CXX_SRC =                         \
 	ps2/renderer/view.cpp             \
 	ps2/renderer/refresh.cpp          \
 	ps2/renderer/overlays.cpp         \
+	ps2/renderer/loading_screen.cpp   \
 	ps2/tests/draw_cube.cpp           \
 	ps2/tests/map_cycle.cpp           \
 	ps2/tests/perf_run.cpp            \
@@ -117,6 +118,7 @@ PS2_CXX_SRC =                         \
 	ps2/debug/pipeline_dump.cpp       \
 	ps2/debug/exception_handler.cpp   \
 	ps2/debug/log_file.cpp            \
+	ps2/debug/load_trace.cpp          \
 	ps2/debug/profile.cpp
 
 # Doug Lea's allocator: vendored third-party C, left as C on purpose (see the
@@ -163,6 +165,7 @@ SIZE_OPT_CXX_SRC =                    \
 	ps2/input/keyboard.cpp            \
 	ps2/input/pad.cpp                 \
 	ps2/renderer/vid.cpp              \
+	ps2/renderer/loading_screen.cpp   \
 	ps2/tests/draw_cube.cpp           \
 	ps2/tests/map_cycle.cpp           \
 	ps2/tests/perf_run.cpp            \
@@ -171,6 +174,7 @@ SIZE_OPT_CXX_SRC =                    \
 	ps2/debug/pipeline_dump.cpp       \
 	ps2/debug/exception_handler.cpp   \
 	ps2/debug/log_file.cpp            \
+	ps2/debug/load_trace.cpp          \
 	ps2/debug/profile.cpp
 
 SIZE_OPT_OBJS = $(addprefix $(OUTPUT_DIR)/$(SRC_DIR)/, $(SIZE_OPT_CXX_SRC:.cpp=.o))

@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // sv_main.c -- server main program
 
 #include "quakedef.h"
+#include "ps2/debug/load_trace.h" // [PS2_QUAKE]: the level load's steps, when traced
 
 server_t	sv;
 server_static_t	svs;
@@ -1471,6 +1472,7 @@ void SV_SpawnServer (const char *server)
 	scr_centertime_off = 0;
 
 	Con_DPrintf ("SpawnServer: %s\n",server);
+	PS2_LOAD_TRACE ("SV_SpawnServer: %s", server); // [PS2_QUAKE]
 	svs.changelevel_issued = false;		// now safe to issue another
 
 //
@@ -1555,6 +1557,7 @@ void SV_SpawnServer (const char *server)
 		return;
 	}
 	sv.models[1] = sv.worldmodel;
+	PS2_LOAD_TRACE ("SV_SpawnServer: %s loaded", sv.modelname); // [PS2_QUAKE]
 
 //
 // clear world interaction links
@@ -1592,6 +1595,7 @@ void SV_SpawnServer (const char *server)
 	pr_global_struct->serverflags = svs.serverflags;
 
 	ED_LoadFromFile (sv.worldmodel->entities);
+	PS2_LOAD_TRACE ("SV_SpawnServer: entities spawned, their models loaded"); // [PS2_QUAKE]
 
 	sv.active = true;
 
@@ -1621,5 +1625,6 @@ void SV_SpawnServer (const char *server)
 			SV_SendServerinfo (host_client);
 
 	Con_DPrintf ("Server spawned.\n");
+	PS2_LOAD_TRACE ("SV_SpawnServer: done"); // [PS2_QUAKE]
 }
 

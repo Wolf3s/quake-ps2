@@ -2,9 +2,10 @@
  * File: engine_hooks.h
  * Brief: What QuakeSpasm's C needs from the backend that no QuakeSpasm header declares: the PS2
  *        stand-ins for the few OpenGL calls made outside the renderer (the status bar's alpha
- *        and scissor, the view blend, the screenshot readback), the PS2's additions to the
- *        default config, where save games and config.cfg are kept, and the engine state the
- *        backend reads that QuakeSpasm keeps to one file. Every engine line that uses this is tagged [PS2_QUAKE].
+ *        and scissor, the view blend, the screenshot readback), the loading screen, the PS2's
+ *        additions to the default config, where save games and config.cfg are kept, and the
+ *        engine state the backend reads that QuakeSpasm keeps to one file. Every engine line that
+ *        uses this is tagged [PS2_QUAKE].
  *        NOTE: Shared header between C and C++.
  *
  * This source code is released under the GNU GPL v2 license.
@@ -53,6 +54,20 @@ void PS2_RumblePickup(void);
 // The last finished frame, read back from GS VRAM as 8-bit RGB with the top row first: glwidth *
 // glheight * 3 bytes. SCR_ScreenShot_f's glReadPixels.
 void PS2_ReadPixels(byte * rgb);
+
+// ------------------------------------------------------------------------------------------------
+// Loading (common.c, gl_screen.c)
+// ------------------------------------------------------------------------------------------------
+
+// A file COM_FindFile is opening to read, by its name in the search path (a COM_FileExists lookup
+// isn't one): named in the frame log during a perf run, and on the loading screen.
+void PS2_FileOpening(const char * fileName);
+
+// The loading plaque went up (SCR_BeginLoadingPlaque) and came down (SCR_EndLoadingPlaque, or
+// SCR_UpdateScreen's timeout). Nothing draws a frame in between, so the backend shows a loading
+// screen of its own (renderer/loading_screen.h).
+void PS2_LoadingScreenBegin(void);
+void PS2_LoadingScreenEnd(void);
 
 // ------------------------------------------------------------------------------------------------
 // Configs (cmd.c)

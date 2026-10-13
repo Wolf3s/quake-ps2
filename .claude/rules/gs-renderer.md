@@ -44,6 +44,11 @@ the world, the entity passes, the glows), `brush.cpp` (per-surface draw data, bu
 - `SCR_UpdateScreen` draws the 3D view first (`V_RenderView`), then all of the 2D (`GL_Set2D`,
   tile clear, status bar, console, menus), all inside `GL_BeginRendering`/`GL_EndRendering`.
   The backend's test scene and debug overlays go last, in `GL_EndRendering`.
+- **The loading screen draws frames of its own**, outside `SCR_UpdateScreen`, while the plaque
+  is up: `rs::BeginFrame`, the plaque and its status bar, `rs::EndFrame(deferPresent=false)`
+  (`DrawLoadingScreen` in vid.cpp), so each is on screen before the call returns. They skip
+  `GL_BeginRendering`'s profiler rollover and the overlays, and nothing is drawn while a frame is
+  open (`rs::IsFrameOpen`): a file read from inside a frame leaves the screen as it is.
 - **Never `Con_Printf` between `GL_BeginRendering` and `GL_EndRendering`.** While the client
   isn't in a game (console, menus, loading), each `Con_Printf` redraws the screen through
   `SCR_UpdateScreen`, which would open a frame inside the frame (`rs::BeginFrame` asserts).

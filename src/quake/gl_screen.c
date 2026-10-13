@@ -852,6 +852,8 @@ void SCR_BeginLoadingPlaque (void)
 
 	scr_disabled_for_loading = true;
 	scr_disabled_time = realtime;
+
+	PS2_LoadingScreenBegin (); // [PS2_QUAKE]: shown at once, with the files read on a status bar
 }
 
 /*
@@ -864,6 +866,7 @@ void SCR_EndLoadingPlaque (void)
 {
 	scr_disabled_for_loading = false;
 	Con_ClearNotify ();
+	PS2_LoadingScreenEnd (); // [PS2_QUAKE]
 }
 
 //=============================================================================
@@ -1028,6 +1031,7 @@ void SCR_UpdateScreen (void)
 		if (realtime - scr_disabled_time > 150) // [PS2_QUAKE]: was 60; a load off USB on a console can take minutes
 		{
 			scr_disabled_for_loading = false;
+			PS2_LoadingScreenEnd (); // [PS2_QUAKE]
 			Con_Printf ("load failed.\n");
 		}
 		else

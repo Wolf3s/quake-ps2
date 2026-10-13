@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 #include "bgmusic.h"
+#include "ps2/debug/load_trace.h" // [PS2_QUAKE]: the level load's steps, when traced
 
 const char *svc_strings[] =
 {
@@ -289,6 +290,7 @@ void CL_ParseServerInfo (void)
 	char	sound_precache[MAX_SOUNDS][MAX_QPATH];
 
 	Con_DPrintf ("Serverinfo packet received.\n");
+	PS2_LOAD_TRACE ("CL_ParseServerInfo: serverinfo received"); // [PS2_QUAKE]
 
 // ericw -- bring up loading plaque for map changes within a demo.
 //          it will be hidden in CL_SignonReply.
@@ -408,6 +410,7 @@ void CL_ParseServerInfo (void)
 		}
 		CL_KeepaliveMessage ();
 	}
+	PS2_LOAD_TRACE ("CL_ParseServerInfo: %d models loaded", nummodels - 1); // [PS2_QUAKE]
 
 	S_BeginPrecaching ();
 	for (i = 1; i < numsounds; i++)
@@ -416,6 +419,7 @@ void CL_ParseServerInfo (void)
 		CL_KeepaliveMessage ();
 	}
 	S_EndPrecaching ();
+	PS2_LOAD_TRACE ("CL_ParseServerInfo: %d sounds loaded", numsounds - 1); // [PS2_QUAKE]
 
 // local state
 	cl_entities[0].model = cl.worldmodel = cl.model_precache[1];

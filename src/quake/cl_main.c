@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakedef.h"
 #include "bgmusic.h"
 #include "ps2/debug/engine_profile.h" // [PS2_QUAKE]: the profile probes in CL_ReadFromServer
+#include "ps2/debug/load_trace.h" // [PS2_QUAKE]: the level load's steps, when traced
 
 // we need to declare some mouse variables here, because the menu system
 // references them even when on a unix system.
@@ -186,6 +187,7 @@ void CL_SignonReply (void)
 	char 	str[8192];
 
 	Con_DPrintf ("CL_SignonReply: %i\n", cls.signon);
+	PS2_LOAD_TRACE ("CL_SignonReply: %i", cls.signon); // [PS2_QUAKE]
 
 	switch (cls.signon)
 	{

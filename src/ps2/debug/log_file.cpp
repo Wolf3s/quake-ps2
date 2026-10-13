@@ -18,6 +18,7 @@
 
 #include "ps2/common.h"
 #include "ps2/debug/log_file.h"
+#include "ps2/debug/load_trace.h"
 #include "ps2/system/iop_boot.h"
 #include "ps2/system/sys.h"
 
@@ -33,8 +34,9 @@ namespace {
 
 constexpr const char * kLogFileName = "quake.log";
 
-// What the log does until ps2_logfile is registered, and that cvar's default.
-constexpr bool kLogFileDefaultOn = false;
+// What the log does until ps2_logfile is registered, and that cvar's default: on in a build with
+// the load trace on, which is read back from the log.
+constexpr bool kLogFileDefaultOn = (PS2_QUAKE_LOAD_TRACE != 0);
 
 // A Con_Printf message (MAXPRINTMSG is 4096) with a stamp on each line fits in one write. A
 // longer run of short lines just takes more than one.

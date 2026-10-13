@@ -102,7 +102,7 @@ void FrameLogMarkView(const char * what);
 
 // Records a file being opened, written as an "FLOG#open,<row>,<name>" line with the next dump -
 // the row being the one whose columns are charged with the read. COM_FindFile calls it through
-// PS2_FrameLogNoteOpen for every file the engine opens, and the music stream for its tracks,
+// PS2_FileOpening for every file the engine opens, and the music stream for its tracks,
 // so every mid-level load names itself in the log. Note that the server frame and the client's
 // message reads, where most of those happen, run before the frame's rollover: the read then
 // stretches the Frame of the row after (see debug/engine_profile.h).

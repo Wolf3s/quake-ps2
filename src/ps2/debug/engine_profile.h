@@ -1,6 +1,6 @@
 /* ================================================================================================
  * File: engine_profile.h
- * Brief: Profile probes for the engine's own C code, and the frame log's file-open notes.
+ * Brief: Profile probes for the engine's own C code.
  *        NOTE: Shared header between C and C++.
  *
  *        The renderer's probes see only what happens inside the refresh calls, which leaves
@@ -49,10 +49,6 @@ extern "C" {
 void PS2_ProfileBegin(int site);
 void PS2_ProfileEnd(int site);
 
-/* Names a file being opened in the frame log (ps2::debug::FrameLogNoteOpen). A no-op unless the
- * perf run has turned the notes on. */
-void PS2_FrameLogNoteOpen(const char * fileName);
-
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
@@ -61,7 +57,6 @@ void PS2_FrameLogNoteOpen(const char * fileName);
 
 #define PS2_ProfileBegin(site) ((void)0)
 #define PS2_ProfileEnd(site)   ((void)0)
-#define PS2_FrameLogNoteOpen(fileName) ((void)0)
 
 #endif /* PS2_QUAKE_PROFILE */
 

@@ -8,11 +8,14 @@
  * ================================================================================================ */
 
 #include "ps2/common.h"
+#include "ps2/engine_hooks.h"
 #include "ps2/system/sys.h"
 #include "ps2/system/iop_boot.h"
+#include "ps2/debug/load_trace.h"
 #include "ps2/debug/log_file.h"
 #include "ps2/debug/scr_print.h"
 #include "ps2/debug/profile.h"
+#include "ps2/renderer/loading_screen.h"
 #include "ps2/renderer/profile.h"
 
 #include <cerrno>
@@ -399,6 +402,22 @@ void Sys_SendKeyEvents()
 {
     IN_Commands();
     IN_SendKeyEvents();
+
+#if PS2_QUAKE_LOAD_TRACE
+    // The load trace's heartbeat, once a second while a level comes up: connected, not yet
+    // signed on. It says the frames still run, and at which signon a load sits.
+    static int s_lastBeatMsec = 0;
+    if (cls.state == ca_connected && cls.signon != SIGNONS)
+    {
+        const int msec = ps2::sys::Milliseconds();
+        if ((msec - s_lastBeatMsec) >= 1000)
+        {
+            s_lastBeatMsec = msec;
+            PS2_LOAD_TRACE("heartbeat: signon %d, server %s, plaque %s", cls.signon, sv.active ? "up" : "down",
+                           scr_disabled_for_loading ? "up" : "down");
+        }
+    }
+#endif // PS2_QUAKE_LOAD_TRACE
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -454,8 +473,30 @@ void Sys_FileSeek(int handle, int position)
 
 int Sys_FileRead(int handle, void * dest, int count)
 {
-    PS2_PROFILE_SCOPED_EVENT(ps2::prof_evt::FsIo);
-    return static_cast<int>(std::fread(dest, 1, static_cast<size_t>(count), s_fileHandles[handle]));
+    // Counted on the loading screen while the plaque is up, which may draw a frame of it first:
+    // outside the FsIo event, which is the read alone.
+    ps2::loading::NoteRead(count);
+
+#if PS2_QUAKE_LOAD_TRACE
+    const int startMsec = ps2::sys::Milliseconds();
+#endif // PS2_QUAKE_LOAD_TRACE
+
+    int bytesRead;
+    {
+        PS2_PROFILE_SCOPED_EVENT(ps2::prof_evt::FsIo);
+        bytesRead = static_cast<int>(std::fread(dest, 1, static_cast<size_t>(count), s_fileHandles[handle]));
+    }
+
+    PS2_LOAD_TRACE("read %s: %d KB in %d ms", ps2::loading::CurrentFile(), (bytesRead + 1023) / 1024,
+                   ps2::sys::Milliseconds() - startMsec);
+    return bytesRead;
+}
+
+// engine_hooks.h: COM_FindFile names each file it opens for a read, ahead of the read.
+void PS2_FileOpening(const char * fileName)
+{
+    ps2::debug::FrameLogNoteOpen(fileName);
+    ps2::loading::NoteFile(fileName);
 }
 
 int Sys_FileWrite(int handle, const void * data, int count)

@@ -230,6 +230,24 @@ close is followed by a `fileXioSync` of the mounted partition. On the Quake II p
 cost about 23 ms a line over USB, so a load timed with the log on mostly measures the log. A write
 that fails turns logging off, with a warning on stdout.
 
+**Loading screen.** While the loading plaque is up, the screen shows the plaque with a status bar
+along the bottom naming the file being read, and the files, megabytes and seconds so far. It is
+redrawn at most every 200 ms, and as soon as a file of 256 KB or more starts. Each frame of it is
+shown before its draw returns
+([loading_screen.cpp](src/ps2/renderer/loading_screen.cpp)): with `ps2_gs_latency` on, the plaque
+`SCR_BeginLoadingPlaque` draws would otherwise wait for a next frame that nothing draws until the
+level is up, so it never showed. QuakeSpasm raises the plaque, over a game or a demo, for a level
+change, a game loaded from the menu and the demo loop's next demo. A `map`, typed at the console or
+the menu's New Game, disconnects first, and loads with no plaque.
+
+**Load trace.** Set `PS2_QUAKE_LOAD_TRACE` to 1 in [load_trace.h](src/ps2/debug/load_trace.h) (it
+ships 0; make tracks the header, so no clean is needed). The log file then defaults to on, and the
+level loading path prints `[load +<ms> ms]` lines: the plaque going up and down, the server's spawn
+(the world loaded, the entities spawned with their models), the client's precache of models and
+sounds, `R_NewMap`, each signon and the first 3D view after the load. Every file read is traced
+with its size and read time. A heartbeat a second shows the signon while a level comes up. "+ms" is
+the time since the previous trace line, so a step's duration is on the line that ends it.
+
 **Render pipeline hangs.** In debug builds every wait on the GS
 ([cmd_buffer.cpp](src/ps2/renderer/cmd_buffer.cpp)) gives up after about a second, dumps the
 pipeline and stops with `Sys_Error("Render pipeline hang: ...")`. The dump

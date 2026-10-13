@@ -79,11 +79,6 @@ extern "C" void PS2_ProfileEnd(const int site)
     ps2::debug::ProfileAccumulate(s_engineEvents[site],
                                   ps2::debug::ReadCycles() - s_engineStart[site]);
 }
-
-extern "C" void PS2_FrameLogNoteOpen(const char * fileName)
-{
-    ps2::debug::FrameLogNoteOpen(fileName);
-}
 #endif // PS2_QUAKE_PROFILE
 
 // ------------------------------------------------------------------------------------------------
