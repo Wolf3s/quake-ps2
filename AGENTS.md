@@ -65,6 +65,10 @@ changed a setting. Commit a changed default on purpose, not as fallout from a te
   Test them with `#if`, never `#ifdef` (`-Wundef` is on).
 - make does not track flag changes. After editing `CONFIG_DEFS` or other flags,
   `rm -rf build/<config>/src`.
+- **macOS's make (GNU Make 3.81) compares timestamps to the whole second.** A file edited for a
+  scratch build and put back within the same second as that build looks unchanged, and its
+  object keeps the edit. After undoing a temporary edit, `touch` the file before building, or
+  clean (a hang test's wedge outlived its revert this way, 2026-10-13).
 - Source lists in the Makefile are explicit. QuakeSpasm's C goes in `ENGINE_C_SRC`. Add a new
   `.cpp` to `PS2_CXX_SRC`, and to `SIZE_OPT_CXX_SRC` (built `-Os`) if it is load-time or
   debug-only rather than per-frame. Run `make compiledb` after adding or removing files.
