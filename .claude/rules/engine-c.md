@@ -119,8 +119,10 @@ For saves and settings (`save-games.md`): `host_cmd.c`'s `Host_Savegame_f` and
 Some files with GL names hold engine logic and stay, with only their GL halves cut:
 `gl_model.c` (the server needs its BSP hulls and PVS), `gl_screen.c` (`SCR_UpdateScreen`, the
 loading plaque, and `screenshot`, TGA only, over `PS2_ReadPixels`; it also defaults
-`scr_menuscale` to 2 for the 640x448 screen, while `scr_sbarscale` keeps QuakeSpasm's 1),
-`gl_refrag.c`, `gl_rlight.c`, `r_part.c` (particle simulation) and `gl_fog.c` (its message
+`scr_menuscale` to 2 for the 640x448 screen, while `scr_sbarscale` keeps QuakeSpasm's 1, and
+gives the loading plaque 150 s before `SCR_UpdateScreen` prints "load failed." and draws again,
+where QuakeSpasm gives it 60: the plaque spans every frame of a load, and the Quake II port's
+loads off USB on a console ran past two minutes), `gl_refrag.c`, `gl_rlight.c`, `r_part.c` (particle simulation) and `gl_fog.c` (its message
 parsing must run, or the stream desyncs). `gl_warp.c` is gone: its subdivision fed a warp
 computed per texel, and the PS2's, per vertex, wants a finer cut (brush.cpp makes it); the
 cvars it defined that the engine registers live in the backend.

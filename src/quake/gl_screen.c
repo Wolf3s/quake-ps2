@@ -1025,7 +1025,7 @@ void SCR_UpdateScreen (void)
 
 	if (scr_disabled_for_loading)
 	{
-		if (realtime - scr_disabled_time > 60)
+		if (realtime - scr_disabled_time > 150) // [PS2_QUAKE]: was 60; a load off USB on a console can take minutes
 		{
 			scr_disabled_for_loading = false;
 			Con_Printf ("load failed.\n");
