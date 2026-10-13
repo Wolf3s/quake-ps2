@@ -214,8 +214,12 @@ paths:
   then the same `rm -rf` and a plain `make release` afterwards. Keep `ps2_logfile` off for a
   capture: every console print through it is a USB write inside the frames being measured. The
   perf test and the map cycle allow 240 s for a level load, a console's over USB.
-- **A PAL console runs at 50 Hz**, so its frames have 20 ms: `frame_budget.py --pal` budgets
-  against that field, where NTSC's would call every one of them over.
+- **A PAL console runs at 50 Hz** with `ps2_video_mode auto`, the console's own standard, so its
+  frames have 20 ms: `frame_budget.py --pal` budgets against that field, where NTSC's would call
+  every one of them over. PCSX2's BIOS here is NTSC; `ps2_video_mode pal` in the config
+  reproduces a PAL console's pacing and its 512 lines. *(Q2)* The PAL console forced to NTSC ran
+  the perf test at 56.1 fps over gameplay, with 6.8% of steady frames dropped against 0.77% at
+  50 Hz: the same work per frame, a smaller budget.
 - `build/baselines/` is untracked and local, holding captures, summaries and config backups.
 
 ## Every level: the map cycle's perf pass (`ps2_testmaps 2`, debug build)

@@ -32,7 +32,9 @@ QuakeSpasm has no renderer interface like Quake II's `refexport_t`: the client c
 renderer directly. So the seam is that renderer's public surface, implemented in `src/ps2`:
 
 - 2D: `draw.h` (`Draw_*`, `GL_SetCanvas`) and `GL_Set2D`.
-- Frame: `GL_BeginRendering`/`GL_EndRendering`, `VID_*` and the `vid` global (`vid.h`).
+- Frame: `GL_BeginRendering`/`GL_EndRendering`, `VID_*` and the `vid` global (`vid.h`), and the
+  `vid_menu*fn` hooks `menu.c` draws Options' Video Options page through (vid.cpp fills them in
+  `VID_Init`; null, as menu.c defines them, the row stays hidden).
 - Refresh: `render.h` (`R_Init`, `R_NewMap`, `R_RenderView`, ...), `R_TranslatePlayerSkin`
   and `R_TranslateNewPlayerSkin`, `D_FlushCaches`, `Sky_*`, the renderer globals and cvars the
   client reads (`r_refdef`, `r_lerpmodels`, `gl_polyblend`, ...), and what `gl_model.c` calls

@@ -66,6 +66,17 @@ the world, the entity passes, the glows), `brush.cpp` (per-surface draw data, bu
 
 ## GS and libdraw
 
+- **The TV standard is ours to pick, not libgraph's.** `graph_initialize` always takes the
+  console's region (`graph_get_region()`: an `E` as the ROM name's 5th character is PAL) and
+  has no override. So `gs::Init` makes its calls itself with the mode `ps2_video_mode` chose,
+  through `system/video_mode.h`, which the error screen reads too. libgraph's interlaced FIELD
+  mode shows 448 lines on NTSC and 512 on PAL (224/256 per field), and puts the picture at
+  DX 652/DY 50 and 680/72. The framebuffer takes the standard's full height. A 640x512 16-bit
+  framebuffer pair plus Z costs 240 KB more VRAM than 640x448: the texture heap drops from 2408
+  to 2168 KB (measured here, 2026-10-13, as on the Quake II port). The present clock's field rate
+  follows the chosen standard, not the console's. *(Q2)* Forcing NTSC on a PAL console works on
+  hardware (2026-10-11): the perf test paced at 59.94 Hz.
+
 - **VRAM readback** (`gs::DownloadFramebufferRows`, ps2sdk's own sequence): BITBLTBUF, TRXPOS,
   TRXREG, FINISH and TRXDIR=1 go down PATH2 (VIF1 DIRECT) behind MSKPATH3 and FLUSHA; wait for
   FINISH and an empty VIF1 FIFO, set `VIF1_STAT.FDR` and `BUSDIR`, receive by VIF1 DMA, then

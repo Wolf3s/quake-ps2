@@ -184,6 +184,9 @@ mass:/QUAKE/
   [Debugging commands](#debugging-commands).
 - **Saves and settings go to the memory card** in slot 1 (see [Save games](#save-games)), never to
   the USB drive or the HDD.
+- **NTSC or PAL.** The game runs in the console's own standard: 50 Hz and 512 lines on a PAL
+  console, 60 Hz and 448 on an NTSC one. Options → Video Options → Video mode forces one, after a
+  restart; a PAL console can drive NTSC if the TV takes 60 Hz.
 - **The debug ELF** (`build/debug/quake.elf`) runs the same way, with assertions on and the debug
   overlays showing.
 
@@ -304,10 +307,16 @@ implements those directly, with no GL underneath. All of it draws but fog, which
 (`gl_fog.c` still parses it, so a custom map that sets it plays, unfogged).
 
 - **Video and the frame** ([vid.cpp](src/ps2/renderer/vid.cpp)). `VID_Init` brings the GS up at
-  640x448 with two framebuffers, 16-bit by default (`ps2_fb_16bit`), and a 16-bit z-buffer.
-  `SCR_UpdateScreen` draws each frame between `GL_BeginRendering`, which clears it to
-  `r_clearcolor`, and `GL_EndRendering`, which submits it. By default the GS draws a finished
-  frame while the EE builds the next one (`ps2_gs_latency`).
+  640x448 on NTSC and 640x512 on PAL, with two framebuffers, 16-bit by default
+  (`ps2_fb_16bit`), and a 16-bit z-buffer. `ps2_video_mode` picks the standard: `auto` takes the
+  console's own (from its BIOS ROM name), and `ntsc` or `pal` force one, so a PAL console can run
+  at 60 Hz on a TV that takes it ([video_mode.h](src/ps2/system/video_mode.h), which the error
+  screen shares). Both are read at boot, from the config ahead of the configs, as QuakeSpasm reads
+  its video mode. 512 lines leave 240 KB less VRAM for textures than 448 (2168 KB). Options' Video
+  Options page, which QuakeSpasm leaves to the video module, holds them with `ps2_fb_dither` and
+  `ps2_gs_latency`. `SCR_UpdateScreen` draws each frame between `GL_BeginRendering`, which clears
+  it to `r_clearcolor`, and `GL_EndRendering`, which submits it. By default the GS draws a
+  finished frame while the EE builds the next one (`ps2_gs_latency`).
 - **Palette.** Quake's textures stay 8-bit in VRAM (PSMT8) and sample `gfx/palette.lmp`
   through a CLUT, built once as the GS comes up.
 - **Command buffer.** A frame is one DMA chain to VIF1, built in a 1.5 MB block of two 768 KB
