@@ -293,8 +293,10 @@ them back on the options menu's "Reset to defaults" too. Most are QuakeSpasm's o
 
 The left stick moves and strafes and the right one turns and looks, through QuakeSpasm's `joy_*`
 cvars (dead zones, response exponents, sensitivities, `joy_invert`, `joy_swapmovelook`) at its
-defaults. The defaults also turn `cl_alwaysrun` on, so the stick's deflection sets the pace all
-the way up to a run. Outside a game the left stick works as the arrow keys, and held buttons
+defaults, but for wider dead zones: 0.25 of the stick's travel instead of 0.175, since a worn
+DualShock 2's stick can rest far enough off centre to turn the camera on its own. Past the dead
+zone the response still ramps up from zero. The defaults also turn `cl_alwaysrun` on, so the
+stick's deflection sets the pace all the way up to a run. Outside a game the left stick works as the arrow keys, and held buttons
 repeat, so menus scroll. Unlike QuakeSpasm's, `joy_enable 0` switches off only the sticks: the
 pad is all the input most PS2s have.
 

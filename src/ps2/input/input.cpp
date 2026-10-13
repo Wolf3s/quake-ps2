@@ -49,13 +49,19 @@ namespace {
 // Cvars
 // ------------------------------------------------------------------------------------------------
 
-// QuakeSpasm's game controller cvars (in_sdl.c's), with its defaults. The dead zones are circular,
-// as a fraction of the stick's travel, and the outer thresholds are how far short of the rim
-// counts as full deflection. The exponents shape the response past the dead zone (1 is linear);
-// the sensitivities are degrees per second at full deflection. joy_deadzone_trigger is left out:
-// the DualShock's L2 and R2 are buttons.
-static cvar_t s_joyDeadzoneLook       = ps2::MakeCvar("joy_deadzone_look",        "0.175", CVAR_ARCHIVE);
-static cvar_t s_joyDeadzoneMove       = ps2::MakeCvar("joy_deadzone_move",        "0.175", CVAR_ARCHIVE);
+// QuakeSpasm's game controller cvars (in_sdl.c's), with its defaults but the dead zones. Those are
+// circular, as a fraction of the stick's travel, and the outer thresholds are how far short of the
+// rim counts as full deflection. The exponents shape the response past the dead zone (1 is
+// linear); the sensitivities are degrees per second at full deflection. joy_deadzone_trigger is
+// left out: the DualShock's L2 and R2 are buttons.
+//
+// The dead zones are 0.25 rather than QuakeSpasm's 0.175: a worn DualShock 2's stick can come to
+// rest well off centre - on the Quake II port a user's old pad turned the camera with the stick
+// released until its dead zones went from 0.15 to 0.25 - which a PC pad, or PCSX2 with one, never
+// shows. A stick resting at 0.25 read here as 2 degrees a second of turn at 0.175. The response
+// still ramps up from zero at the dead zone's edge (ApplyDeadzone), so little control is lost.
+static cvar_t s_joyDeadzoneLook       = ps2::MakeCvar("joy_deadzone_look",        "0.25",  CVAR_ARCHIVE);
+static cvar_t s_joyDeadzoneMove       = ps2::MakeCvar("joy_deadzone_move",        "0.25",  CVAR_ARCHIVE);
 static cvar_t s_joyOuterThresholdLook = ps2::MakeCvar("joy_outer_threshold_look", "0.02",  CVAR_ARCHIVE);
 static cvar_t s_joyOuterThresholdMove = ps2::MakeCvar("joy_outer_threshold_move", "0.02",  CVAR_ARCHIVE);
 static cvar_t s_joySensitivityYaw     = ps2::MakeCvar("joy_sensitivity_yaw",      "240",   CVAR_ARCHIVE);
