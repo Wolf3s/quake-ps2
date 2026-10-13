@@ -338,7 +338,7 @@ void SV_SendServerinfo (client_t *client)
 	int				i; //johnfitz
 
 	MSG_WriteByte (&client->message, svc_print);
-	sprintf (message, "%c\nFITZQUAKE %1.2f SERVER (%i CRC)\n", 2, FITZQUAKE_VERSION, pr_crc); //johnfitz -- include fitzquake version
+	sprintf (message, "%c\n" QUAKE_VERSION_NAME " %1.2f SERVER (%i CRC)\n", 2, QUAKESPASM_VERSION, pr_crc);
 	MSG_WriteString (&client->message,message);
 
 	MSG_WriteByte (&client->message, svc_serverinfo);
