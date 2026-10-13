@@ -206,9 +206,11 @@ implements those directly, with no GL underneath. All of it draws but fog, which
   frame while the EE builds the next one (`ps2_gs_latency`).
 - **Palette.** Quake's textures stay 8-bit in VRAM (PSMT8) and sample `gfx/palette.lmp`
   through a CLUT, built once as the GS comes up.
-- **Command buffer.** A frame is one DMA chain to VIF1, built in a 1 MB block of two 512 KB
+- **Command buffer.** A frame is one DMA chain to VIF1, built in a 1.5 MB block of two 768 KB
   halves, so one can fill while the other draws. 3D batches go to the VU1 microprograms, and 2D
-  goes straight to the GS.
+  goes straight to the GS. A frame that outgrows its half kicks what it has built and carries on
+  in the other half, which that kick has already waited out, so the GS draws the first part while
+  the EE builds the rest.
 - **2D** ([draw.cpp](src/ps2/renderer/draw.cpp)), in place of QuakeSpasm's `gl_draw.c`: console
   text, pics, fills, the tiled border, and QuakeSpasm's canvases, each of whose
   `glOrtho`/`glViewport` pairs becomes a scale and an offset. WAD pics under 64x64 share two

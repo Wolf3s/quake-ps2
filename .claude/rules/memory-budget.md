@@ -60,11 +60,12 @@ Measure with `ps2_memstats` and `hunk_print` before raising any of them.
 - With sound on (2026-10-08), demo1's sounds hold 3.26 MB of the hunk's cache: 122 sounds,
   kept resampled to the 22050 Hz mixing rate (twice their 11025 Hz size; 44100 would be four
   times). The hunk's size is settled below, from the map cycle.
-- Renderer, outside the hunk, so far: the frame's DMA chain, one 1 MB block
-  (`MemTag::Renderer`) that `VID_Init` allocates for the whole run, and the `ps2::tex` pool
-  (640 `Texture` slots) in `.bss`. Boot shows 3.13 MB for ELF + system with the 2D in. In
-  demo1 `TexImage` holds 197 KB: the 2D pics' copies, the scrap atlases (64 KB each), and
-  texmgr's `gltexture_t` records. 11.56 MB of RAM is left (2026-10-06).
+- Renderer, outside the hunk, so far: the frame's DMA chain, one block (`MemTag::Renderer`)
+  that `VID_Init` allocates for the whole run (1 MB until 2026-10-13, then 1.5 MB: two 768 KB
+  halves, see `cmd_buffer.h`), and the `ps2::tex` pool (640 `Texture` slots) in `.bss`. Boot
+  shows 3.13 MB for ELF + system with the 2D in. In demo1 `TexImage` holds 197 KB: the 2D pics'
+  copies, the scrap atlases (64 KB each), and texmgr's `gltexture_t` records. 11.56 MB of RAM is
+  left (2026-10-06).
 - With the world drawing (2026-10-07): the brush surfaces' baked vertices
   (`MemTag::WorldMdl`, 32 bytes each) are 297 KB (e1m7) to 1.10 MB (e1m4), and the lightmap
   atlases (`MemTag::Lightmap`, 64 KB each) 128 to 256 KB. demo1 ran with 9.15 MB of RAM left.

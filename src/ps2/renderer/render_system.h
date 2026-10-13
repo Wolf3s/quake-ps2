@@ -146,7 +146,7 @@ void EndFrame(bool deferPresent);
 void KickAndWait();
 
 // Whether a frame is open, between BeginFrame and EndFrame: what is recorded so far may reference
-// any texture's pixels, and none of it has been sent yet.
+// any texture's pixels, and the GS may still be drawing what of it has been sent (an overflow).
 bool IsFrameOpen();
 
 // Waits out the frame EndFrame left drawing, if it did, and shows it; then returns the drawing
@@ -237,8 +237,8 @@ void Submit(vu1::ParticleVertex * __restrict & particles, const math::Mat4 & mvp
 // ------------------------------------------------------------------------------------------------
 
 // What a draw costs the command buffer besides its vertex data, so that a caller gathering into
-// the buffer can reserve the pair together. It must reserve the pair: cmdbuf::Reserve rewinds when
-// it comes up short, which would pull the buffer out from under the span the chunks reference.
+// the buffer can reserve the pair together. It must reserve the pair: cmdbuf::Reserve moves to a
+// fresh chain when it comes up short, which would leave the span the chunks reference behind.
 //
 // Nothing outside this module reserves anything - the streams and the particle path do it for
 // themselves. It is in the header only because the stream constructors size their claim from it.
@@ -268,7 +268,7 @@ constexpr int ChunkCount(const int items, const int perChunk)
 // Two setup blocks, not one: every chunk reserves the setup alongside itself so that an
 // overflowing reservation can re-emit it, so the last chunk asks for room the draw never uses.
 // Plus the terminator, because EnsureTextureResident can fence the GS mid-draw and a kick writes
-// FLUSH + END at the cursor - it cannot reserve that itself without risking a rewind.
+// FLUSH + END at the cursor - it cannot reserve that itself without risking a fresh chain.
 constexpr int DrawTrianglesChainCost(const int vertCount)
 {
     return cmdbuf::kTerminatorQwords + (2 * kDrawSetupQwords)
@@ -294,7 +294,7 @@ constexpr int DrawParticlesChainCost(const int count)
 // **None is synchronous.** Each appends to the command buffer and returns; nothing is sent until
 // EndFrame. The vertex data must therefore stay valid for the rest of the frame, which is why it
 // is a span of the buffer itself, and the caller must have reserved the matching *ChainCost on
-// top of it so that nothing here can rewind the buffer out from under it.
+// top of it so that nothing here can move the chain out from under it.
 
 // A triangle list under 'mvp', sampling 'texture' (made resident on demand). Any whole-triangle
 // count works: past vu1::kMaxVertsPerBatch it splits into chunks submitted back to back, which
@@ -544,7 +544,7 @@ private:
     // Closes the 2D section, reserves and claims the span. Cold: once per flush cycle.
     void Claim()
     {
-        // Reserving is separate from claiming because cmdbuf::Reserve may rewind the buffer,
+        // Reserving is separate from claiming because cmdbuf::Reserve may move to a fresh chain,
         // which is safe here and only here - nothing of this stream's is live yet.
         FlushPending2D();
         cmdbuf::Reserve(m_claimQwords);

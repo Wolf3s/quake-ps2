@@ -40,12 +40,14 @@ namespace ps2::cmdbuf {
 
 // Bytes in each of the two halves.
 //
-// Sized on the Quake II port, where a frame built 420 KB of chain on average over the perf demos
-// and 681 KB at p95: this held most frames whole and the rest took one overflow rewind, about 1.5
-// kicks a frame. Quake's scenes are lighter. The numbers to steer by are BytesLastFrame(), which
-// counts what a rewind threw away and so says whether a frame *fits*, and
-// EmergencyDrainsLastFrame().
-constexpr u32 kHalfBytes  = 512u * 1024u;
+// The demos build 155 KB of chain a frame at the median and never pass 512 KB, but the map
+// cycle's perf pass found heavy views over it: 1.3% of its frames, up to 2.2 MB (e2m3's teleporter
+// exit, 2026-10-10). A frame's reservations claim their worst case on top of what it ends up using,
+// so 1.8% of them overflowed a 512 KB half. Only 0.2% build more than 768 KB, the size the Quake
+// II port settled on after its console captures (2026-10-11). An overflow is cheap now (see
+// Reserve) but still a mid-frame kick. The numbers to steer by are BytesLastFrame(), which counts
+// what came before an overflow and so says whether a frame *fits*, and EmergencyDrainsLastFrame().
+constexpr u32 kHalfBytes  = 768u * 1024u;
 constexpr u32 kHalfQwords = kHalfBytes / 16u;
 
 // Worst case a Kick() appends past what the caller wrote: the trailing FLUSH and the GS fence it
@@ -96,17 +98,19 @@ constexpr int QwordCapacity()
     return static_cast<int>(kHalfQwords) - kTerminatorQwords;
 }
 
-// Makes room for 'qwords' more, and says whether it had to empty the chain to do it.
+// Makes room for 'qwords' more, and says whether it had to start a fresh chain to do it.
 //
-// **This is the only thing that rewinds a half mid-frame, and that is what makes it the only
-// thing that can invalidate a span.** Everything else only ever appends: a Kick submits what has
-// been built since the last one and leaves the write cursor where it is, so a REF tag emitted at
-// the top of the frame still points at live data at the bottom of it.
+// **This is the only thing that moves the write cursor to a new chain mid-frame, and that is what
+// makes it the only thing that can invalidate a span.** Everything else only ever appends: a Kick
+// submits what has been built since the last one and leaves the write cursor where it is, so a
+// REF tag emitted at the top of the frame still points at live data at the bottom of it.
 //
-// The overflow path terminates what is built, kicks it, waits for VU1 and the GS, and rewinds. A
-// true return therefore means every pointer into the chain and every piece of per-chain state the
-// caller set up (the frame constants, the current batch's GIF tags) is gone and must be re-emitted
-// before anything else is appended.
+// The overflow path terminates what is built, kicks it and carries on in the other half, which
+// the kick has already waited out - it does not wait for the GS to draw this one, so the EE builds
+// the rest of the frame while it does. A true return therefore means the caller is writing into a
+// different chain: every pointer it held and every piece of per-chain state it set up (the frame
+// constants, the current batch's GIF tags) is behind it and must be re-emitted before anything
+// else is appended.
 //
 // Callers that must not be interrupted mid-structure should reserve their whole worst case up
 // front rather than reserving piecemeal - and a caller whose data has to outlive its own draw
@@ -258,7 +262,8 @@ void SetHangReportHook(HangReportFn hook);
 //
 // Does **not** rewind: the pipeline empties, but everything built stays where it is and every
 // pointer into it stays good - which is what lets a draw's vertex data outlive its submission.
-// The chain is rewound at BeginFrame and by Reserve's overflow path, nowhere else.
+// The chain is rewound at BeginFrame, and Reserve's overflow moves to the other half; nothing else
+// starts a new one.
 bool Drain();
 
 // --------------------------------------------------------------------------------------------
@@ -270,13 +275,14 @@ bool Drain();
 // says whether the capacity is right.
 u32 PeakBytes();
 
-// Bytes the frame just finished built, counting what an overflow rewind threw away. Against
+// Bytes the frame just finished built, counting what came before an overflow. Against
 // kHalfBytes this is the number that says whether a frame fits a half - PeakBytes() only
 // ever reports what one half held at once, which is the same thing until the day it overflows.
 u32 BytesLastFrame();
 
-// Chains kicked, and overflow drains taken, during the frame just finished. One kick and zero
-// emergency drains is the good case; the drain firing every frame means the capacity is too small.
+// Chains kicked, and overflows into the other half, during the frame just finished. One kick and
+// no overflow is the good case; one every frame means the capacity is too small. (Still called
+// drains, and chainDrains in the frame log, from when an overflow waited for the GS.)
 int KicksLastFrame();
 int EmergencyDrainsLastFrame();
 #endif // PS2_QUAKE_PROFILE

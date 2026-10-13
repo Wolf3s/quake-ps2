@@ -86,6 +86,14 @@ paths:
   e4m7's p50 went from 14.3 to 3.3 ms, e2m2's from 12.9 to 3.3. The 25 drops left are all
   e2m3's viewpoint 2, now a rendering problem: View 17-18 ms (World 6.5) in its worst frames,
   facing the most of that area's geometry.
+- **Chain overflows carry on in the other half (2026-10-13, from quake2-ps2 d9f31d0).** A frame
+  that outgrew its 512 KB half used to kick, wait for the GS to draw it all and rebuild in the
+  same half. *(Q2)* On a console that cost ~5 ms a frame, 80% of the dropped frames under NTSC;
+  PCSX2 charges it ~2 ms. Now it kicks and carries on in the other half, and the halves are 768
+  KB. Over the map pass (`q1-chain.*` against `q1-group1.*`, the same 34,235 rows): frames
+  overflowing 620 → 90 (overflows 742 → 139), dropped steady frames 26 → 19, GsWait mean 11 → 6
+  µs, every other column within noise. The overflows left are the heaviest views, e2m3's
+  teleporter exit above all (frames building up to 2.2 MB).
 - The rest of this section is the Quake II port's *(Q2)*. Reference
   `build/baselines/vwep.flog`: EE work mean 5.4 ms, p99 9.3 ms, max 11.6 ms (debug), 0 dropped
   frames.
