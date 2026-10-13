@@ -76,8 +76,10 @@ namespace {
 // tags; the largest of id's models, the boss at 555 triangles, fits with room to spare.
 constexpr int kLerpBatchMaxVerts = 3 * 768;
 
-// The shade term's table: SHADEDOT_QUANT rows, one per sixteenth of a turn of the model's yaw.
-constexpr int kShadeDotQuant = 16;
+// The shade term's table: SHADEDOT_QUANT rows, one per sixteenth of a turn of the model's yaw,
+// 22.5 degrees each.
+constexpr int   kShadeDotQuant   = 16;
+constexpr float kShadeDotDegrees = 360.0f / static_cast<float>(kShadeDotQuant);
 
 // Where the light normal index sits in a pose word: trivertx_t's fourth byte, the top one.
 constexpr u32 kNormalShift = 24;
@@ -448,7 +450,10 @@ void SetupAliasLighting(entity_t & e, const bool overbright, vec3_t outLight, in
         lightcolor[0] = lightcolor[1] = lightcolor[2] = 256.0f;
     }
 
-    *outDotRow = static_cast<int>(e.angles[YAW] * (static_cast<float>(kShadeDotQuant) / 360.0f)) & (kShadeDotQuant - 1);
+    // Divided by the row's 22.5 degrees, which float holds exactly, where QuakeSpasm multiplies by
+    // 16/360: on the EE that folds low and the multiply truncates, so a model facing a multiple of
+    // 22.5 degrees, as most spawn angles are, took the row before QuakeSpasm's (ps2-platform.md).
+    *outDotRow = static_cast<int>(e.angles[YAW] / kShadeDotDegrees) & (kShadeDotQuant - 1);
     VectorScale(lightcolor, 1.0f / 200.0f, outLight);
 }
 

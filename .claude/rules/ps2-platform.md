@@ -40,8 +40,12 @@ paths:
   `anglemod` (`a * (65536/360.0)`, a float under `-fsingle-precision-constant`, `0x43360B60`
   where round-to-nearest gives `...61`) took every angle already on its grid one step down, so
   the view turned clockwise by 360/65536 of a degree a frame, 5.5 degrees every 1000 frames,
-  with nothing pressed (fixed 2026-10-13). Divide by c when c is exact in float (360/65536 is): a
-  multiple of c then divides back to itself.
+  with nothing pressed (fixed 2026-10-13). alias.cpp's shade row (`yaw * (16/360)`) put a model
+  facing any multiple of 22.5 degrees in the row before QuakeSpasm's (fixed the same day). Divide
+  by c when c is exact in float (360/65536 and 22.5 are): a multiple of c then divides back to
+  itself. A test ELF over every angle of the 16-bit grid, both signs, found the old `anglemod`
+  wrong on all but zero and the old row on the 30 multiples, and the new ones on none, matching a
+  PC build's double math.
 - **No double-precision FPU.** `double` is libgcc soft-float. The engine C builds with
   `-fsingle-precision-constant` and `ps2/math/math_c.h`. Backend code uses `f` suffixes, and
   `-Wdouble-promotion` enforces them. Soft-float doubles were the cause of almost all
