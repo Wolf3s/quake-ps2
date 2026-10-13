@@ -19,10 +19,10 @@ namespace ps2::test {
 namespace {
 
 // The scene's switch, and its variants (see DrawRotatingCube).
-cvar_t s_testCube     = ps2::MakeCvar("ps2_testcube",                   "0", CVAR_NONE);
-cvar_t s_testTess     = ps2::MakeCvar("ps2_testcube_tess",              "8", CVAR_NONE);
-cvar_t s_testEviction = ps2::MakeCvar("ps2_testcube_vram_tex_eviction", "0", CVAR_NONE);
-cvar_t s_testVuLerp   = ps2::MakeCvar("ps2_testcube_vulerp",            "0", CVAR_NONE);
+static cvar_t s_testCube     = ps2::MakeCvar("ps2_testcube",                   "0", CVAR_NONE);
+static cvar_t s_testTess     = ps2::MakeCvar("ps2_testcube_tess",              "8", CVAR_NONE);
+static cvar_t s_testEviction = ps2::MakeCvar("ps2_testcube_vram_tex_eviction", "0", CVAR_NONE);
+static cvar_t s_testVuLerp   = ps2::MakeCvar("ps2_testcube_vulerp",            "0", CVAR_NONE);
 
 constexpr float kCubeHalfSize = 20.0f;
 

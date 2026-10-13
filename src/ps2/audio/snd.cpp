@@ -32,7 +32,6 @@
 #include <timer.h>
 #include <timer_alarm.h>
 
-#include <atomic>
 #include <cstring>
 
 namespace {
@@ -75,12 +74,15 @@ static int s_exitSema     = -1; // signalled by the feeder as it leaves
 static int s_tickAlarm    = -1;
 static u64 s_tickBusClocks = 0;
 
-static std::atomic<bool> s_feederQuit{ false };
+// What the feeder shares with the main thread are single words, each written by one thread only:
+// volatile is all they need, as in music_stream.h. The EE has one core, so the only reordering to
+// rule out is the compiler's, and volatile makes it load and store each one where the code does.
+static volatile bool s_feederQuit = false;
 
 #if PS2_QUAKE_PROFILE
 // Cycles the feeder has spent awake, wall time, round trips to the IOP included. Only the
 // feeder writes it; SNDDMA_Submit folds what is new since its last look into the Sound event.
-static std::atomic<u32> s_feederCycles{ 0 };
+static volatile u32 s_feederCycles = 0;
 static u32 s_feederCyclesSeen = 0;
 #endif // PS2_QUAKE_PROFILE
 
@@ -114,7 +116,8 @@ void Feed()
     }
 
     // `paintedtime` is the mixer's, in snd_dma.c: the main thread writes it, after the samples.
-    const int painted = __atomic_load_n(&paintedtime, __ATOMIC_RELAXED);
+    // Read once, through a volatile lvalue: the engine doesn't declare it volatile.
+    const int painted = *static_cast<const volatile int *>(&paintedtime);
     int depth = queued + s_mixRing.Drain(s_device, painted, room);
 
     const int lowWater = kQueueLowFeeds * feed;
@@ -144,7 +147,7 @@ void FeederMain(void *)
     for (;;)
     {
         WaitSema(s_tickSema);
-        if (s_feederQuit.load(std::memory_order_relaxed))
+        if (s_feederQuit)
         {
             break;
         }
@@ -152,8 +155,7 @@ void FeederMain(void *)
 #if PS2_QUAKE_PROFILE
         const ps2::debug::CpuCycles start = ps2::debug::ReadCycles();
         Feed();
-        const u32 total = s_feederCycles.load(std::memory_order_relaxed);
-        s_feederCycles.store(total + (ps2::debug::ReadCycles() - start), std::memory_order_relaxed);
+        s_feederCycles = s_feederCycles + (ps2::debug::ReadCycles() - start);
 #else  // PS2_QUAKE_PROFILE
         Feed();
 #endif // PS2_QUAKE_PROFILE
@@ -221,7 +223,7 @@ void StopFeeder()
 
     if (s_feederThread >= 0)
     {
-        s_feederQuit.store(true, std::memory_order_relaxed);
+        s_feederQuit = true;
         SignalSema(s_tickSema);
         WaitSema(s_exitSema);
         DeleteThread(s_feederThread);
@@ -296,7 +298,7 @@ void SNDDMA_Submit()
     // spent feeding since the last frame into the profile: wall time, which includes the
     // waits on the IOP that the main thread ran through.
 #if PS2_QUAKE_PROFILE
-    const u32 total = s_feederCycles.load(std::memory_order_relaxed);
+    const u32 total = s_feederCycles;
     ps2::debug::ProfileAccumulate(&ps2::prof_evt::Sound, total - s_feederCyclesSeen);
     s_feederCyclesSeen = total;
 #endif // PS2_QUAKE_PROFILE

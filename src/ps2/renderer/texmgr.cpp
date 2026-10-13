@@ -498,7 +498,7 @@ namespace ps2::tex {
 void LoadPalette()
 {
     const void * const file = COM_LoadTempFile("gfx/palette.lmp", nullptr);
-    if (file == nullptr)
+    if (file == nullptr) [[unlikely]]
     {
         Sys_Error("Couldn't load gfx/palette.lmp");
     }

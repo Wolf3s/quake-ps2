@@ -352,6 +352,22 @@ void ClearTextureChains(qmodel_t & model, const texchain_t chain)
     }
 }
 
+// Whether the camera's leaf holds a turbulent surface. Seen through a water surface the camera is
+// next to, the other side is in a leaf the camera's own PVS may not reach: MarkSurfaces takes the
+// PVS of everything around the eye then.
+bool NearWaterPortal(const mleaf_t & leaf)
+{
+    msurface_t * const * mark = leaf.firstmarksurface;
+    for (int i = 0; i < leaf.nummarksurfaces; ++i, ++mark)
+    {
+        if (((*mark)->flags & SURF_DRAWTURB) != 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Marks the surfaces of every leaf the PVS lets through and the frustum doesn't cull, chains the
 // ones facing the camera, rebuilds their lightmaps if their lighting moved, and adds the static
 // entities standing in those leafs to the frame's entity list.
@@ -361,24 +377,12 @@ void MarkSurfaces()
 
     qmodel_t & world = *cl.worldmodel;
 
-    // Seen through a water surface the camera is next to, the other side is in a leaf the
-    // camera's own PVS may not reach: take the PVS of everything around the eye then.
-    bool nearWaterPortal = false;
-    msurface_t ** mark = r_viewleaf->firstmarksurface;
-    for (int i = 0; i < r_viewleaf->nummarksurfaces; ++i, ++mark)
-    {
-        if (((*mark)->flags & SURF_DRAWTURB) != 0)
-        {
-            nearWaterPortal = true;
-        }
-    }
-
     const byte * vis;
     if (r_novis.value != 0.0f || r_viewleaf->contents == CONTENTS_SOLID || r_viewleaf->contents == CONTENTS_SKY)
     {
         vis = Mod_NoVisPVS(&world);
     }
-    else if (nearWaterPortal)
+    else if (NearWaterPortal(*r_viewleaf))
     {
         vis = SV_FatPVS(r_origin, &world);
     }
@@ -404,7 +408,7 @@ void MarkSurfaces()
 
         if (r_oldskyleaf.value != 0.0f || leaf->contents != CONTENTS_SKY)
         {
-            mark = leaf->firstmarksurface;
+            msurface_t ** mark = leaf->firstmarksurface;
             for (int j = 0; j < leaf->nummarksurfaces; ++j, ++mark)
             {
                 msurface_t & surf = **mark;
@@ -561,11 +565,11 @@ const texture_t * TextureAnimation(const texture_t * base, const int frame)
     while (base->anim_min > relative || base->anim_max <= relative)
     {
         base = base->anim_next;
-        if (base == nullptr)
+        if (base == nullptr) [[unlikely]]
         {
             Sys_Error("R_TextureAnimation: broken cycle");
         }
-        if (++count > 100)
+        if (++count > 100) [[unlikely]]
         {
             Sys_Error("R_TextureAnimation: infinite cycle");
         }
@@ -1184,7 +1188,7 @@ void RenderView()
     {
         return;
     }
-    if (cl.worldmodel == nullptr)
+    if (cl.worldmodel == nullptr) [[unlikely]]
     {
         Sys_Error("R_RenderView: NULL worldmodel");
     }

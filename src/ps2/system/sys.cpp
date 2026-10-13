@@ -334,14 +334,14 @@ void Sys_Init()
 #endif // PS2_QUAKE_PROFILE
 }
 
-void Sys_Quit()
+Q_COLD_FUNC void Sys_Quit()
 {
     Host_Shutdown();
     std::fflush(stdout);
     std::exit(0);
 }
 
-void Sys_Error(const char * error, ...)
+Q_COLD_FUNC void Sys_Error(const char * error, ...)
 {
     char text[1024];
 
@@ -458,7 +458,7 @@ int Sys_FileOpenWrite(const char * path)
     const int handle = FindFileHandle();
     std::FILE * file = std::fopen(path, "wb");
 
-    if (file == nullptr)
+    if (file == nullptr) [[unlikely]]
     {
         Sys_Error("Error opening %s: %s", path, std::strerror(errno));
     }

@@ -25,8 +25,6 @@
 
 #include "ps2/audio/audsrv_device.h"
 
-#include <atomic>
-
 namespace ps2::audio {
 
 class MixRing final
@@ -62,8 +60,8 @@ private:
     // Total frames handed to the device since Reset(). Free-running; the mask in
     // PositionInSamples() is what folds it back into the ring. The feeder writes it and
     // the main thread reads it; a 32-bit load or store is a single instruction, so
-    // relaxed order is all either needs.
-    std::atomic<int> m_submittedFrames{ 0 };
+    // volatile is all either needs (see snd.cpp).
+    volatile int m_submittedFrames = 0;
 
     alignas(64) u8 m_buffer[kSizeBytes] = {};
 };

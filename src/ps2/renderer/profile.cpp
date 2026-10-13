@@ -136,7 +136,7 @@ static u32  s_frameIndex = 0;
 static bool s_skipNext   = false; // the frame a dump landed in is not representative
 static bool s_headerDone = false;
 
-cvar_t s_frameLog = ps2::MakeCvar("ps2_frame_log", "0", CVAR_NONE); // <-- ENABLE FRAME LOG HERE
+static cvar_t s_frameLog = ps2::MakeCvar("ps2_frame_log", "0", CVAR_NONE); // <-- ENABLE FRAME LOG HERE
 
 // Files opened since the last dump, written out with it. A file opened while a level runs is a
 // synchronous read inside whatever frame asked for it, and without a name the log can only show

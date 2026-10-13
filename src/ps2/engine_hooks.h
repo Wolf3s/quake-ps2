@@ -26,7 +26,7 @@ extern "C" {
 
 // Draw_Pic at 'alpha' opacity, 0 to 1: what Sbar_DrawPicAlpha did by wrapping Draw_Pic in GL
 // blend state.
-void PS2_DrawPicAlpha(int x, int y, qpic_t * pic, float alpha);
+void PS2_DrawPicAlpha(int x, int y, const qpic_t * pic, float alpha);
 
 // Clips the 2D draws that follow to a rectangle, in screen pixels, until PS2_ResetScissor2D:
 // Sbar_DrawScrollString's glScissor. The origin is the top-left corner; the one caller clips to

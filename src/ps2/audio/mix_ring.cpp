@@ -13,20 +13,20 @@ namespace ps2::audio {
 void MixRing::Reset()
 {
     std::memset(m_buffer, 0, sizeof(m_buffer));
-    m_submittedFrames.store(0, std::memory_order_relaxed);
+    m_submittedFrames = 0;
 }
 
 int MixRing::PositionInSamples() const
 {
     // Unsigned so the fold stays well defined whatever the cursor holds.
-    const unsigned int frames  = static_cast<unsigned int>(m_submittedFrames.load(std::memory_order_relaxed));
+    const unsigned int frames  = static_cast<unsigned int>(m_submittedFrames);
     const unsigned int samples = frames * static_cast<unsigned int>(AudsrvDevice::kChannels);
     return static_cast<int>(samples & (static_cast<unsigned int>(kSamples) - 1u));
 }
 
 int MixRing::Drain(AudsrvDevice & device, const int paintedFrames, const int maxFrames)
 {
-    int submitted = m_submittedFrames.load(std::memory_order_relaxed);
+    int submitted = m_submittedFrames;
 
     // GetSoundtime (snd_dma.c) chops paintedtime back to one ring's worth once it passes
     // 0x40000000 frames - 13.5 hours at 22050Hz - and counts the ring's wraps from zero
@@ -37,7 +37,7 @@ int MixRing::Drain(AudsrvDevice & device, const int paintedFrames, const int max
     if (paintedFrames < submitted - kFrames)
     {
         submitted &= kFrames - 1;
-        m_submittedFrames.store(submitted, std::memory_order_relaxed);
+        m_submittedFrames = submitted;
     }
 
     int pending = paintedFrames - submitted;
@@ -68,7 +68,7 @@ int MixRing::Drain(AudsrvDevice & device, const int paintedFrames, const int max
         // what audsrv actually took.
         const int sentFrames = sentBytes / AudsrvDevice::kFrameBytes;
         submitted += sentFrames;
-        m_submittedFrames.store(submitted, std::memory_order_relaxed);
+        m_submittedFrames = submitted;
         pending   -= sentFrames;
         sentTotal += sentFrames;
 

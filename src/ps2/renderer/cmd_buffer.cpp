@@ -551,7 +551,7 @@ Q_COLD_FUNC void DumpChainPosition()
     debug::DumpPrintf("D1_TADR %08x is outside both chain halves.\n", tadr);
 }
 
-Q_COLD_FUNC void ReportPipelineHang(const char * const what)
+[[noreturn]] Q_COLD_FUNC void ReportPipelineHang(const char * const what)
 {
     debug::DumpPipelineState(what);
     DumpChainPosition();
@@ -581,10 +581,9 @@ Q_ALWAYS_INLINE void SpinUntilReady(ReadyFn && ready, const char * const what)
 
     while (!ready())
     {
-        if ((debug::ReadCycles() - start) > kHangTimeoutCycles)
+        if ((debug::ReadCycles() - start) > kHangTimeoutCycles) [[unlikely]]
         {
             ReportPipelineHang(what);
-            return; // Sys_Error is not marked noreturn, so do not spin on it.
         }
     }
 #else // PS2_QUAKE_DEBUG

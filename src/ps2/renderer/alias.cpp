@@ -159,7 +159,7 @@ AliasDraw * BuildAliasDraw(qmodel_t & model, const aliashdr_t & hdr)
         for (int j = 0; j < 3; ++j, ++out)
         {
             const int index = triangles[i].vertindex[j];
-            if (index < 0 || index >= hdr.numverts)
+            if (index < 0 || index >= hdr.numverts) [[unlikely]]
             {
                 Sys_Error("%s: triangle %d has a bad vertex index (%d)", model.name, i, index);
             }

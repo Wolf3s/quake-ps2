@@ -78,7 +78,7 @@ struct WarpPiece
 
 void AppendCorner(WarpPiece & piece, const float * const corner)
 {
-    if (piece.numCorners >= kMaxWarpCorners)
+    if (piece.numCorners >= kMaxWarpCorners) [[unlikely]]
     {
         Sys_Error("Turbulent surface cut into more than %d corners", kMaxWarpCorners);
     }
@@ -174,7 +174,7 @@ void CutWarpPiece(const WarpPiece & piece, const int axis, Emit & emit)
 template<typename Emit>
 void CutTurbulentSurface(const qmodel_t & model, const msurface_t & surf, Emit & emit)
 {
-    if (surf.numedges > kMaxWarpSurfaceCorners)
+    if (surf.numedges > kMaxWarpSurfaceCorners) [[unlikely]]
     {
         Sys_Error("Turbulent surface with %d corners (%d at most)", surf.numedges, kMaxWarpSurfaceCorners);
     }
@@ -240,7 +240,7 @@ SurfaceDraw MeasureSurface(const qmodel_t & model, const msurface_t & surf)
         auto count = [&verts](const WarpPiece & cell) { verts += 3 * (cell.numCorners - 2); };
         CutTurbulentSurface(model, surf, count);
 
-        if (verts > 0xFFFF)
+        if (verts > 0xFFFF) [[unlikely]]
         {
             Sys_Error("Turbulent surface cut into %d vertices", verts);
         }

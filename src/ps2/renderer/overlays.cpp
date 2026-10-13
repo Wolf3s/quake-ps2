@@ -34,12 +34,12 @@ constexpr u8 kYellow[3] = { 128, 128, 0   };
 constexpr u8 kGreen[3]  = { 0,   128, 0   };
 constexpr u8 kRed[3]    = { 128, 0,   0   };
 
-cvar_t s_showDebugOverlays = ps2::MakeCvar("ps2_debug_overlays", PS2_QUAKE_DEBUG ? "1" : "0", CVAR_ARCHIVE); // all but the FPS counter
-cvar_t s_showFpsCount      = ps2::MakeCvar("ps2_show_fps",       PS2_QUAKE_DEBUG ? "1" : "0", CVAR_ARCHIVE);
-cvar_t s_showMemStats      = ps2::MakeCvar("ps2_show_memstats",  PS2_QUAKE_DEBUG ? "1" : "0", CVAR_ARCHIVE);
-cvar_t s_showVramStats     = ps2::MakeCvar("ps2_show_vramstats", PS2_QUAKE_DEBUG ? "1" : "0", CVAR_ARCHIVE);
-cvar_t s_showDrawStats     = ps2::MakeCvar("ps2_show_drawstats", PS2_QUAKE_DEBUG ? "1" : "0", CVAR_ARCHIVE);
-cvar_t s_showProfileStats  = ps2::MakeCvar("ps2_show_profile",   PS2_QUAKE_DEBUG ? "1" : "0", CVAR_ARCHIVE);
+static cvar_t s_showDebugOverlays = ps2::MakeCvar("ps2_debug_overlays", PS2_QUAKE_DEBUG ? "1" : "0", CVAR_ARCHIVE); // all but the FPS counter
+static cvar_t s_showFpsCount      = ps2::MakeCvar("ps2_show_fps",       PS2_QUAKE_DEBUG ? "1" : "0", CVAR_ARCHIVE);
+static cvar_t s_showMemStats      = ps2::MakeCvar("ps2_show_memstats",  PS2_QUAKE_DEBUG ? "1" : "0", CVAR_ARCHIVE);
+static cvar_t s_showVramStats     = ps2::MakeCvar("ps2_show_vramstats", PS2_QUAKE_DEBUG ? "1" : "0", CVAR_ARCHIVE);
+static cvar_t s_showDrawStats     = ps2::MakeCvar("ps2_show_drawstats", PS2_QUAKE_DEBUG ? "1" : "0", CVAR_ARCHIVE);
+static cvar_t s_showProfileStats  = ps2::MakeCvar("ps2_show_profile",   PS2_QUAKE_DEBUG ? "1" : "0", CVAR_ARCHIVE);
 
 // One 8x8 glyph, at a screen position.
 void DrawGlyph(const int x, const int y, int c, const u8 color[3])

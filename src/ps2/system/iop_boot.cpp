@@ -876,7 +876,7 @@ ModuleStart StartRequired(const IrxModule & module, const bool afterReset, const
         return start;
     }
 
-    if (afterReset)
+    if (afterReset) [[unlikely]]
     {
         Sys_Error("IOP boot: module '%s' failed (id %d, result %d)", module.label, s_lastFailedId, s_lastFailedResult);
     }
@@ -963,7 +963,7 @@ void ResetIop(const char * reason)
     while (!SifIopSync()) {}
     SifInitRpc(0);
 
-    if (!PatchModuleLoader())
+    if (!PatchModuleLoader()) [[unlikely]]
     {
         Sys_Error("IOP boot: module-loader patches failed");
     }
@@ -1266,7 +1266,7 @@ void SetFileXioBuffer()
     // fails, which every read would then DMA from: put the stock size back.
     std::printf("IOP boot: no IOP memory for a %d KB fileXio read buffer (%d); keeping %d KB.\n",
                 kFileXioBufferBytes / 1024, result, kStockFileXioBufferBytes / 1024);
-    if (fileXioSetRWBufferSize(kStockFileXioBufferBytes) != 0)
+    if (fileXioSetRWBufferSize(kStockFileXioBufferBytes) != 0) [[unlikely]]
     {
         Sys_Error("IOP boot: fileXio has no read buffer left");
     }
@@ -1298,7 +1298,7 @@ const char * BringUpStorage(const char * preferredPartition, const bool afterRes
     // than the ROM FILEIO backend. Initialize before probing either device.
     if (fileXioInit() < 0)
     {
-        if (afterReset)
+        if (afterReset) [[unlikely]]
         {
             Sys_Error("IOP boot: fileXio initialization failed");
         }
@@ -1479,7 +1479,7 @@ const char * DetectBasePathAndBootIop(const char * elfPath)
     ResetIop(resetReason);
 
     const char * failure = nullptr;
-    if (const char * basePath = BringUpStorage(preferredPartition, /*afterReset=*/true, &failure))
+    if (const char * basePath = BringUpStorage(preferredPartition, /*afterReset=*/true, &failure)) [[likely]]
     {
         ReportGameData(basePath, LargestFreeIopBlock());
         return basePath;

@@ -241,7 +241,7 @@ qpic_t * PicFromWad(const char * name)
         return &s_picNul.pic;
     }
 
-    if (s_numWadPics == kMaxWadPics)
+    if (s_numWadPics == kMaxWadPics) [[unlikely]]
     {
         Sys_Error("Draw_PicFromWad: more than %d pics", kMaxWadPics);
     }
@@ -270,13 +270,13 @@ qpic_t * CachePic(const char * path)
         }
     }
 
-    if (s_numCachedPics == kMaxCachedPics)
+    if (s_numCachedPics == kMaxCachedPics) [[unlikely]]
     {
         Sys_Error("menu_numcachepics == MAX_CACHED_PICS");
     }
 
     qpic_t * const lump = static_cast<qpic_t *>(static_cast<void *>(COM_LoadTempFile(path, nullptr)));
-    if (lump == nullptr)
+    if (lump == nullptr) [[unlikely]]
     {
         Sys_Error("Draw_CachePic: failed to load %s", path);
     }
@@ -303,7 +303,7 @@ qpic_t * CachePic(const char * path)
 void LoadPics()
 {
     const byte * const conchars = static_cast<const byte *>(W_GetLumpName("conchars"));
-    if (conchars == nullptr)
+    if (conchars == nullptr) [[unlikely]]
     {
         Sys_Error("Draw_LoadPics: couldn't load conchars");
     }
@@ -698,7 +698,7 @@ void GL_SetCanvas(canvastype newcanvas)
                            ViewportInt(320.0f * s), ViewportInt(200.0f * s));
         break;
 
-    default:
+    [[unlikely]] default:
         Sys_Error("GL_SetCanvas: bad canvas type");
     }
 }
@@ -713,7 +713,7 @@ void GL_Set2D()
 // engine_hooks.h
 // ------------------------------------------------------------------------------------------------
 
-void PS2_DrawPicAlpha(int x, int y, qpic_t * pic, float alpha)
+void PS2_DrawPicAlpha(int x, int y, const qpic_t * pic, float alpha)
 {
     PS2_PROFILE_SCOPED_EVENT(ps2::prof_evt::Ui);
     DrawPic(x, y, pic, AlphaByte(alpha));

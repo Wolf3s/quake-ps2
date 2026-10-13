@@ -23,8 +23,12 @@ The README's "Sound" section has the design. The facts behind it:
 - **audsrv's EE library is single-threaded:** every call goes through one static `sbuff` and
   one RPC client. Only the feeder calls it once `SNDDMA_Init` returns.
 - **The R5900 has no LL/SC.** The feeder and the main thread share only single loads and
-  stores (`std::atomic` with relaxed order compiles to plain `lw`/`sw`; check `nm` for
-  `__atomic`/`__sync` calls after changing them). No read-modify-write across threads.
+  stores, each word written by one thread only. No read-modify-write across threads. The words
+  are `volatile`, as `music_stream.h`'s are: the EE has one core, so the only reordering to rule
+  out is the compiler's. They were relaxed `std::atomic`s until 2026-10-13, which compiled to the
+  same `lw`/`sw` (the objects differed only in scheduling), but an atomic invites a `fetch_add`,
+  which GCC can only make a call to `__atomic_*`/`__sync_*`. C++20 deprecates `+=` and `++` on a
+  `volatile` (`-Wvolatile`), so the one writer adds as `v = v + x`.
 - **Timer alarms:** `SetTimerAlarm`'s handler runs inside ps2sdk's T2 interrupt handler, and
   returning a nonzero interval re-arms it (`timer.c`), so one call gives a periodic tick.
   Don't call `ExitHandler()` in the callback: the T2 handler does it once its alarm list is
