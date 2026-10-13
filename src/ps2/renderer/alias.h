@@ -9,8 +9,13 @@
  * ================================================================================================ */
 
 #include "ps2/common.h"
+#include <tamtypes.h>
 
 namespace ps2::alias {
+
+// Capacity of the pool of per-model draw data. A qmodel_t has one at most, and gl_model.c reuses
+// none until Mod_ResetAll, which frees them all first: so its MAX_MOD_KNOWN.
+constexpr u32 kMaxModels = 512;
 
 // Registers the alias model cvars and builds the shading tables. R_Init calls it.
 void Init();
@@ -26,5 +31,9 @@ void DrawAliasModel(entity_t & e, bool viewModel);
 
 // Forgets the player skin textures, which TexMgr_NewGame has just freed (R_NewGame).
 void NewGame();
+
+// The most alias models with draw data at once this run, of kMaxModels: every one loaded since the
+// last Mod_ResetAll. The map cycle reports it.
+u32 PeakModelCount();
 
 } // namespace ps2::alias

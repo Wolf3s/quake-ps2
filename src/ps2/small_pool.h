@@ -1,7 +1,8 @@
 #pragma once
 /* ================================================================================================
  * File: small_pool.h
- * Brief: Simple minimal object pool allocator for use with Texture and Model caches.
+ * Brief: Simple minimal object pool allocator, for fixed-size records allocated at load time: the
+ *        textures, texmgr's gltexture_t records, the alias models' draw data.
  *
  * This source code is released under the GNU GPL v2 license.
  * ================================================================================================ */
@@ -57,6 +58,12 @@ public:
         return m_used;
     }
 
+    // The most slots in use at once since Init(): what MaxSize has to cover.
+    u32 PeakCount() const
+    {
+        return m_peak;
+    }
+
     u16 Alloc()
     {
         if (IsFull())
@@ -70,6 +77,10 @@ public:
 
         m_liveSlots[slot] = true;
         ++m_used;
+        if (m_used > m_peak)
+        {
+            m_peak = m_used;
+        }
 
         PS2_Assert(m_free + m_used == MaxSize);
         return slot;
@@ -120,6 +131,7 @@ public:
 private:
     u32 m_free = 0;
     u32 m_used = 0;
+    u32 m_peak = 0;
 
     T m_slots[MaxSize] = {};
     u16 m_freeIndices[MaxSize] = {};

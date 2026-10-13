@@ -24,6 +24,7 @@
  * ================================================================================================ */
 
 #include "ps2/common.h"
+#include "ps2/small_pool.h"
 #include "ps2/renderer/alias.h"
 #include "ps2/renderer/view.h"
 #include "ps2/renderer/texmgr.h"
@@ -123,29 +124,36 @@ struct AliasDraw
 {
     vu1::LerpDrawAttrib * corners;    // numCorners of them, qword aligned
     int                   numCorners; // three per triangle
-    u32                   bytes;      // the whole block, this header included
     qmodel_t *            owner;
     AliasDraw *           next;       // every model's, for freeing them all
 };
 
-static AliasDraw * s_draws = nullptr;
+using AliasDrawPool = SmallPool<AliasDraw, kMaxModels>;
+static AliasDrawPool s_drawPool;
+static AliasDraw *   s_draws = nullptr;
+
+Q_ALWAYS_INLINE u32 CornerBytes(const int numCorners)
+{
+    return static_cast<u32>(numCorners) * sizeof(vu1::LerpDrawAttrib);
+}
 
 // Builds a model's corners, gl_mesh.c's GL_MakeAliasModelDisplayLists_VBO: a corner on the skin's
 // seam takes the coordinates of the skin's back half when its triangle faces away, and every
 // coordinate samples a texel's centre.
 AliasDraw * BuildAliasDraw(qmodel_t & model, const aliashdr_t & hdr)
 {
-    const int numCorners  = hdr.numtris * 3;
-    const u32 headerBytes = (sizeof(AliasDraw) + 15u) & ~15u;
-    const u32 bytes       = headerBytes + (static_cast<u32>(numCorners) * sizeof(vu1::LerpDrawAttrib));
+    const u16 slot = s_drawPool.Alloc();
+    if (slot == AliasDrawPool::kInvalidIndex) [[unlikely]]
+    {
+        Sys_Error("Out of alias model slots for '%s'! Bump alias::kMaxModels (%u).", model.name, kMaxModels);
+    }
 
-    byte * const block = static_cast<byte *>(
-        heap::AllocAligned(heap::MemAlign(16), bytes, heap::MemTag::AliasMdl));
+    const int numCorners = hdr.numtris * 3;
 
-    AliasDraw & draw = *static_cast<AliasDraw *>(static_cast<void *>(block));
-    draw.corners    = static_cast<vu1::LerpDrawAttrib *>(static_cast<void *>(block + headerBytes));
+    AliasDraw & draw = s_drawPool.Slot(slot);
+    draw.corners    = static_cast<vu1::LerpDrawAttrib *>(
+        heap::AllocAligned(heap::MemAlign(16), CornerBytes(numCorners), heap::MemTag::AliasMdl));
     draw.numCorners = numCorners;
-    draw.bytes      = bytes;
     draw.owner      = &model;
     draw.next       = s_draws;
     s_draws = &draw;
@@ -534,6 +542,8 @@ Q_ALWAYS_INLINE void FoldOffset(math::Mat4 & mvp, const math::Vec3 & scaleOrigin
 
 void Init()
 {
+    s_drawPool.Init(); // One-shot; asserts if called twice.
+
     Cvar_RegisterVariable(&r_drawviewmodel);
     Cvar_RegisterVariable(&r_shadows);
     Cvar_RegisterVariable(&gl_overbright_models);
@@ -761,6 +771,11 @@ void NewGame()
     }
 }
 
+u32 PeakModelCount()
+{
+    return s_drawPool.PeakCount();
+}
+
 } // namespace ps2::alias
 
 extern "C" {
@@ -796,6 +811,7 @@ void GL_MakeAliasModelDisplayLists(qmodel_t * m, aliashdr_t * hdr)
 void GLMesh_DeleteVertexBuffers()
 {
     using ps2::alias::s_draws;
+    using ps2::alias::s_drawPool;
 
     if (s_draws != nullptr)
     {
@@ -807,7 +823,8 @@ void GLMesh_DeleteVertexBuffers()
         ps2::alias::AliasDraw * const draw = s_draws;
         s_draws = draw->next;
         draw->owner->ps2_render = nullptr;
-        ps2::heap::Free(draw, draw->bytes, ps2::heap::MemTag::AliasMdl);
+        ps2::heap::Free(draw->corners, ps2::alias::CornerBytes(draw->numCorners), ps2::heap::MemTag::AliasMdl);
+        s_drawPool.Free(s_drawPool.IndexOf(*draw));
     }
 }
 

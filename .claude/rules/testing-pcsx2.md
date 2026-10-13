@@ -97,7 +97,8 @@ The rest are scripted runs:
   paks (the campaign in play order, then the rest alphabetically: pak1's dm1-dm6), names the
   campaign maps the data lacks, loads each for 8 s (`ps2_testmaps_dwell`), prints a
   `MapCycle [n/N] <map> <pak>` line per map (hunk, cache, backend tags, heap peak, RAM free) and
-  ends with `MapCycle: done.`, then quits (`MapCycle: done - quitting now`), which writes a
+  ends with the fixed pools' peaks against their sizes (textures, texmgr's records, alias models)
+  and `MapCycle: done.`, then quits (`MapCycle: done - quitting now`), which writes a
   config: the card's in a scratch run, so restore it. With `ps2_test_quit 0` it stays up instead
   (`... the game stays up for the next test`), as every test does. `ps2_testmaps 2` is its perf
   pass (see the perf run below).

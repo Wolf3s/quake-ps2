@@ -7,11 +7,16 @@
  * This source code is released under the GNU GPL v2 license.
  * ================================================================================================ */
 
+#include "ps2/renderer/texture.h" // kMaxTextures
+
 struct gltexture_s;
 
 namespace ps2::tex {
 
-struct Texture;
+// Capacity of texmgr's record pool: one record per gltexture_t the engine holds. The texture pool's
+// size: a record that draws holds one of its slots, which the 2D's pics, the lightmaps and the sky
+// share, so that pool runs out first. A few records hold none (warp images, the two dummies).
+constexpr u32 kMaxTextureRecords = kMaxTextures;
 
 // Loads gfx/palette.lmp into d_8to24table. VID_Init calls it, ahead of TexMgr_Init, because
 // the GS builds its CLUTs from the palette as it comes up. Those never change afterwards, so
@@ -30,5 +35,8 @@ void BuildPlayerTranslation(int shirt, int pants, unsigned char (&translation)[2
 // Releases the textures the engine freed while the last frame was being recorded, which that frame
 // may have been uploading. GL_BeginRendering calls it once rs::BeginFrame has waited that frame out.
 void ReleaseRetiredTextures();
+
+// The most records alive at once this run, of kMaxTextureRecords. The map cycle reports it.
+u32 PeakTextureRecordCount();
 
 } // namespace ps2::tex

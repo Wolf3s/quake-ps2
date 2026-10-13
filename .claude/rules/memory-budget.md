@@ -104,6 +104,15 @@ Measure with `ps2_memstats` and `hunk_print` before raising any of them.
   lands moves between runs; the peak is the number to compare. The log is
   `build/baselines/q1-mapcycle-sync.emulog.txt`. The 64 KB fileXio read buffer is IOP memory
   (ps2-platform.md), and PAL's 512 lines cost VRAM, not RAM (gs-renderer.md).
+- **Fixed pools (2026-10-13):** texmgr's `gltexture_t` records (196 bytes each) moved from
+  `TexImage` into a `.bss` pool of 640 (124 KB), and the alias models' draw headers into one of 512
+  (9 KB); their corners stay on the heap (`AliasMdl`). The map cycle ends with every pool's peak,
+  and over the registered data: textures 387 of 640, records 262 of 640, alias models 79 of 512.
+  The record pool is the texture pool's size, so that one runs out first; 384 records would
+  still cover the registered peak 1.5 times, for 49 KB less. The heap's worst moment went from
+  26.72 to **26.81 MB** (at e3m2 `TexImage` held 40 KB less and `AliasMdl` 2 KB less, against
+  133 KB of pools), with the hunk and every other tag as before, and 5.99 MB free at the end. The
+  log is `build/baselines/q1-mapcycle-pools.emulog.txt`.
 - **The hunk stays 16 MB:** every level fits with room to spare, but the cache fills whatever
   the levels leave. A smaller hunk would trade that room for models and sounds evicted and read
   back mid-level (`Mod_Extradata`, `S_LoadSound`), a hitch each.

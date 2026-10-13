@@ -204,6 +204,11 @@ void Destroy(const Texture & texture)
     s_pool.Free(s_pool.IndexOf(texture));
 }
 
+u32 PeakTextureCount()
+{
+    return s_pool.PeakCount();
+}
+
 const Texture & DebugTexture(int variant)
 {
     if (variant < 0 || variant >= kNumDebugTextures)

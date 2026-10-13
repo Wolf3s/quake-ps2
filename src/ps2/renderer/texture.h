@@ -271,8 +271,11 @@ Texture & Create(const char * name, const void * pixels, int width, int height,
 void Destroy(const Texture & texture);
 
 // Capacity of the texture pool: world textures, model skins, HUD/menu pics.
-// Running out is a Sys_Error telling you to bump this.
+// Running out is a Sys_Error telling you to bump this. texmgr's record pool follows it.
 constexpr u32 kMaxTextures = 640;
+
+// The most textures alive at once this run, of kMaxTextures. The map cycle reports it.
+u32 PeakTextureCount();
 
 // Number of built-in debug checkerboard variants (distinct colors).
 constexpr int kNumDebugTextures = PS2_QUAKE_DEBUG ? 6 : 1;

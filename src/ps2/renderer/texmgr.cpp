@@ -22,6 +22,7 @@
  * ================================================================================================ */
 
 #include "ps2/common.h"
+#include "ps2/small_pool.h"
 #include "ps2/renderer/texmgr.h"
 #include "ps2/renderer/texture.h"
 #include "ps2/renderer/render_system.h"
@@ -80,6 +81,10 @@ Q_ALWAYS_INLINE const TextureRecord & RecordOf(const gltexture_t * gl)
     return *static_cast<const TextureRecord *>(static_cast<const void *>(gl));
 }
 
+// Where the records live. A free slot is all zeros: zero-initialized, and cleared again by Free.
+using RecordPool = ps2::SmallPool<TextureRecord, ps2::tex::kMaxTextureRecords>;
+static RecordPool s_records;
+
 // Every live texture, newest first, through gltexture_t's own 'next' link.
 static gltexture_t * s_textures = nullptr;
 
@@ -87,13 +92,16 @@ static gltexture_t * s_textures = nullptr;
 // live list already, but their PS2 textures and pixels held until the frame has been drawn.
 static gltexture_t * s_retired = nullptr;
 
-gltexture_t * NewTexture()
+gltexture_t * NewTexture(const char * name)
 {
-    // TODO: Allocate these from a fixed-size pool instead.
-    void * const memory = ps2::heap::Alloc(sizeof(TextureRecord), ps2::heap::MemTag::TexImage);
-    std::memset(memory, 0, sizeof(TextureRecord));
+    const u16 slot = s_records.Alloc();
+    if (slot == RecordPool::kInvalidIndex) [[unlikely]]
+    {
+        Sys_Error("Out of texture records for '%s'! Bump tex::kMaxTextureRecords (%u).", name,
+                  ps2::tex::kMaxTextureRecords);
+    }
 
-    gltexture_t * const texture = static_cast<gltexture_t *>(memory);
+    gltexture_t * const texture = &s_records.Slot(slot).gl;
     texture->next = s_textures;
     s_textures = texture;
 
@@ -125,8 +133,9 @@ void ReleaseTexture(TextureRecord & record)
 // Releases a record taken off the live list, and the record with it.
 void FreeRecord(gltexture_t * texture)
 {
-    ReleaseTexture(RecordOf(texture));
-    ps2::heap::Free(texture, sizeof(TextureRecord), ps2::heap::MemTag::TexImage);
+    TextureRecord & record = RecordOf(texture);
+    ReleaseTexture(record);
+    s_records.Free(s_records.IndexOf(record));
 }
 
 // Releases the retired textures. Only once nothing recorded can still reach them: no frame open,
@@ -540,6 +549,11 @@ void ReleaseRetiredTextures()
     ReleaseRetired();
 }
 
+u32 PeakTextureRecordCount()
+{
+    return s_records.PeakCount();
+}
+
 } // namespace ps2::tex
 
 extern "C" {
@@ -564,6 +578,8 @@ QS_PFNGENERATEMIPMAP GL_GenerateMipmap = nullptr;
 // The palette is already in: VID_Init loaded it for the GS.
 void TexMgr_Init()
 {
+    s_records.Init(); // One-shot; asserts if called twice.
+
     notexture   = TexMgr_LoadImage(nullptr, "notexture",   2, 2, SRC_RGBA, nullptr, "", 0, TEXPREF_PERSIST);
     nulltexture = TexMgr_LoadImage(nullptr, "nulltexture", 2, 2, SRC_RGBA, nullptr, "", 0, TEXPREF_PERSIST);
 }
@@ -590,7 +606,7 @@ gltexture_t * TexMgr_LoadImage(qmodel_t * owner, const char * name, int width, i
     }
     if (texture == nullptr)
     {
-        texture = NewTexture();
+        texture = NewTexture(name);
     }
 
     texture->owner = owner;

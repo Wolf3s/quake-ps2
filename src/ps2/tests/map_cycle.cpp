@@ -16,7 +16,10 @@
 #include "ps2/tests/map_cycle.h"
 #include "ps2/tests/perf_run.h"
 #include "ps2/tests/test_quit.h"
+#include "ps2/renderer/alias.h"
 #include "ps2/renderer/profile.h"
+#include "ps2/renderer/texmgr.h"
+#include "ps2/renderer/texture.h"
 #include "ps2/system/heap.h"
 #include "ps2/system/sys.h"
 
@@ -620,6 +623,11 @@ void Finish()
                ps2::heap::FormatMemoryUnit(ps2::heap::GetTotalMemBytes(), true, total, sizeof(total)),
                ps2::heap::FormatMemoryUnit(static_cast<size_t>(s_hunkPeak), true, hunk, sizeof(hunk)),
                ps2::heap::FormatMemoryUnit(static_cast<size_t>(hunk_size), true, hunkSize, sizeof(hunkSize)));
+
+    // The fixed pools, at their fullest this run: what their sizes have to cover.
+    Con_Printf("MapCycle: pools at their peak - textures %u of %u, texture records %u of %u, alias models %u of %u.\n",
+               ps2::tex::PeakTextureCount(), ps2::tex::kMaxTextures, ps2::tex::PeakTextureRecordCount(),
+               ps2::tex::kMaxTextureRecords, ps2::alias::PeakModelCount(), ps2::alias::kMaxModels);
 
     // Survives Restart(), so re-running the test in the same session numbers the passes and
     // makes drift between them obvious.
