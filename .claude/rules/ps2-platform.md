@@ -35,6 +35,13 @@ paths:
 - The compiler folds `constexpr` float math in the *target's* round-toward-zero semantics.
   `math::kPI` folds to `0x40490FDA`, not `...DB`. A host harness won't reproduce shipped
   constant bytes exactly, so check the ELF's `.rodata` instead.
+- **So `(int)(x * (1/c))` comes out one low for an exact multiple of c.** The folded reciprocal
+  sits under the true one, the multiply truncates, and the cast truncates again. QuakeSpasm's
+  `anglemod` (`a * (65536/360.0)`, a float under `-fsingle-precision-constant`, `0x43360B60`
+  where round-to-nearest gives `...61`) took every angle already on its grid one step down, so
+  the view turned clockwise by 360/65536 of a degree a frame, 5.5 degrees every 1000 frames,
+  with nothing pressed (fixed 2026-10-13). Divide by c when c is exact in float (360/65536 is): a
+  multiple of c then divides back to itself.
 - **No double-precision FPU.** `double` is libgcc soft-float. The engine C builds with
   `-fsingle-precision-constant` and `ps2/math/math_c.h`. Backend code uses `f` suffixes, and
   `-Wdouble-promotion` enforces them. Soft-float doubles were the cause of almost all
@@ -185,7 +192,9 @@ The boot code (`system/iop_boot.cpp`) is the Quake II port's as of quake2-ps2 94
   stick released on a console (2026-10-11), which PCSX2 with a modern host pad never shows, and
   wider dead zones (0.25) fixed it. Here QuakeSpasm's circular dead zones went from 0.175 to 0.25
   for it (input.cpp, 2026-10-13). A failed `padRead` (no fresh data) keeps the last state,
-  sticks included, until a read succeeds (pad.cpp).
+  sticks included, until a read succeeds (pad.cpp). `joy_enable 0` takes the sticks out: a turn
+  that goes on then (and with a menu up, which the sticks never steer) is the engine's, as
+  `anglemod`'s was (above).
 - **`mcInit` spins forever if MCSERV isn't running** (a SifBindRpc loop). Call it only after
   every module load succeeded.
 - libmc with the old MCSERV: no `mcRename`. "Unformatted" comes from `mcGetInfo`'s result

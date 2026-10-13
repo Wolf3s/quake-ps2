@@ -97,7 +97,11 @@ float	anglemod(float a)
 	else
 		a += 360*( 1 + (int)(-a/360) );
 #endif
-	a = (360.0/65536) * ((int)(a*(65536/360.0)) & 65535);
+	// [PS2_QUAKE]: divided by the step, not multiplied by 65536/360. In float that folds toward
+	// zero, and the EE's multiply truncates too, so an angle already on the grid came out under
+	// its own step and (int) took one off: the view turned clockwise by a step every frame. The
+	// step is exact in float, and a quantized angle divides back to itself.
+	a = (360.0/65536) * ((int)(a / (360.0/65536)) & 65535);
 	return a;
 }
 

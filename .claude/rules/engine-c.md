@@ -67,6 +67,10 @@ purpose:
   float result went single.
 - `FloorDivMod`, which nothing calls since the software renderer went.
 
+`anglemod` divides by its 360/65536 step where QuakeSpasm multiplies by 65536/360: in float that
+constant folds low, and the view turned clockwise a step a frame (ps2-platform.md has why).
+`CL_AdjustAngles` runs it on the yaw every frame the client is connected, whatever the input.
+
 Arguments built from the double `cl.time` (the idle sway, the gun's angles,
 `R_EntityParticles`) lost only their libm call: the double multiply in front of it waits for
 the double-time work. `PS2_Cosf`'s error grows with the argument (5e-6 at 50 radians),
