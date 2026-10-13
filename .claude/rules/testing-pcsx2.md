@@ -114,8 +114,11 @@ The rest are scripted runs:
 - **The console's boot and storage path** (`iop_boot.cpp`, the log file, anything that reads or
   writes the game data's drive): `HostFs = false`, and a raw MBR/FAT32 disk image on USB port 2
   (`[USB2]` `Type = Msd`, `Msd_subtype = 0`, `Msd_ImagePathMsd = <absolute path>`), with `id1/`
-  (the paks and an `autoexec.cfg`) at its root. The README has the `hdiutil create` line; keep a
-  pristine copy of the image, since a run writes to it. Launch the scratch ELF with `-elf` as
+  (the paks and an `autoexec.cfg`) at its root. `make_usb_image.py` builds one from the current
+  builds and the repo's `id1/`; for chosen data, `hdiutil create -size 64m -fs 'MS-DOS FAT32'
+  -layout MBRSPUD -volname Q1PS2 -srcfolder <dir holding id1/> -format UDTO -nospotlight
+  <name>.cdr` (rename it `.img`; 64 MB holds the shareware pak0). Keep a pristine copy of the
+  image, since a run writes to it. Launch the scratch ELF with `-elf` as
   usual: PCSX2 still passes it a `host:` path, so the boot searches the HDD first (`[DEV9/Hdd]`
   is off: ps2dev9 fails, 2 ms) and then USB. On 2026-10-13 the debug build found the data on
   `mass0:` 661 ms in (600 ms of it waiting for the drive), loaded e1m1 and took a screenshot. Put

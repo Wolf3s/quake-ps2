@@ -198,11 +198,15 @@ Msd_subtype = 0
 Msd_ImagePathMsd = /absolute/path/to/quake-usb.img
 ```
 
-On macOS, `hdiutil create -size 64m -fs 'MS-DOS FAT32' -layout MBRSPUD -volname Q1PS2 -srcfolder
-<folder holding id1/> -format UDTO -nospotlight quake-usb.cdr` makes one (rename the `.cdr` to
-`.img`). Size it for the paks: 64 MB holds the shareware `pak0.pak`. `hdiutil attach -imagekey
-diskimage-class=CRawDiskImage quake-usb.img` mounts it afterwards, to read the `quake.log` a run
-left there. `[DEV9/Hdd]` `HddEnable` and `HddFile` attach an HDD image the same way. PCSX2 launches
+On macOS, [make_usb_image.py](src/tools/scripts/make_usb_image.py) makes one from the current
+builds and `id1/`: `make && make release && src/tools/scripts/make_usb_image.py`. It writes
+`build/quake-usb.img` (`--output` for another path, `--force` to replace one, `--size-mib` for a
+fixed size; at least 256 MiB, with room to spare), holding `quake_debug.elf` and
+`quake_release.elf` beside a copy of `id1/`: the paks, `config.cfg` and any `autoexec.cfg`, and
+the music's `.adp` tracks but not its `.wav` sources. It runs no build, and leaves the stripped
+ELFs' symbols in `build/`. Close PCSX2 before replacing an image it has attached. `hdiutil attach
+-imagekey diskimage-class=CRawDiskImage build/quake-usb.img` mounts one afterwards, to read the
+`quake.log` a run left there. `[DEV9/Hdd]` `HddEnable` and `HddFile` attach an HDD image the same way. PCSX2 launches
 the ELF with a `host:` path, so the boot searches the HDD before USB, as it would for an ELF
 launched from the HDD. PCSX2 doesn't model either drive's speed, so its load times say nothing
 about a console's.
