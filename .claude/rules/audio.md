@@ -67,6 +67,18 @@ over from the Quake II port unchanged; the facts marked *(Q2)* were measured the
   (`graph_wait_vsync`) spins, so that and file I/O are the reader's only chances. `BGM_Update`
   (in the main loop just before `S_Update`) tops `s_rawsamples` up to `paintedtime + 7680`,
   the raw-sample channel `bgmusic.c` used, so it costs no SIF bandwidth of its own.
+- **A main-thread file call waits out a music read.** The SDK file client and the IOP's file
+  server take one request at a time, so anything the main thread reads or writes while the
+  reader has a read out waits for it. *(Q2)* On a console USB drive that took ~300 ms: the USB
+  keyboard poll, a `read()` on `usbkbd:dev` every frame, stalled a frame every 640 ms in a
+  2026-10-10 console capture (83 s of 171 s of gameplay), and a run with the keyboard off, then
+  one with the fix, confirmed it. Here too (2026-10-13), `Keyboard::NextEvent` skips while
+  `audio::MusicReadPending()` and the driver keeps the keys queued; `Keyboard::PollDue` reads
+  only four times a second unless a key arrived in the last 10 s or is held, and `in_keyboard`
+  is off by default in release builds. Keep any other per-frame file I/O off the main thread the
+  same way. PCSX2's `host:` reads are too quick to show it. In PCSX2 (debug, e1m1, 2026-10-13)
+  a poll costs ~90 µs, on one frame in 14 when idle: the `Input` column (the pad's polls too)
+  averaged 70 µs a frame with the keyboard on, against 63 with it off.
 - **QuakeSpasm's music semantics, kept:** `BGM_PlayCDtrack` stops the music and tries
   `CDAudio_Play` first (it always declines here); the music holds still while `bgmvolume` is
   0 or the game is paused (`svc_setpause`), with the queued ~350 ms playing out; `BGM_Stop`

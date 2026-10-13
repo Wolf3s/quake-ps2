@@ -169,8 +169,8 @@ paths:
    2026-10-12); armed from the config, `ps2_perftest` comes back as 0. Stop PCSX2: after the
    quit it sits in the BIOS menu.
 4. `src/tools/scripts/frame_log/summarize_flog.py <emulog> --rows build/baselines/<tag>.flog`,
-   then `compare_flog.py <before> <after>`. `frame_budget.py` realigns Server, ClParse and
-   ClScene (they land one row early) and lists each mid-level `FLOG#open` load with its cost
+   then `compare_flog.py <before> <after>`. `frame_budget.py` realigns Server, ClParse,
+   ClScene and Input (they land one row early) and lists each mid-level `FLOG#open` load with its cost
    (`--all-opens` lists the level loads' too). The open notes are written in perf runs only
    (`FrameLogNoteOpens`), 64 per log batch.
 

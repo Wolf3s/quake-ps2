@@ -14,7 +14,9 @@
  * ================================================================================================ */
 
 #include "ps2/input/keyboard.h"
+#include "ps2/audio/music_stream.h"
 #include "ps2/system/iop_boot.h"
+#include "ps2/system/sys.h"
 #include "ps2/common.h"
 
 #include <cstdlib>
@@ -304,12 +306,35 @@ void Keyboard::Shutdown()
         PS2KbdClose();
         m_available = false;
     }
+    ForgetHeldKeys();
+}
+
+void Keyboard::ForgetHeldKeys()
+{
     m_shiftKeys = 0;
+    for (bool & held : m_held)
+    {
+        held = false;
+    }
+    m_numHeld = 0;
+    m_keySeen = false;
 }
 
 // ------------------------------------------------------------------------------------------------
 // Polling
 // ------------------------------------------------------------------------------------------------
+
+bool Keyboard::PollDue() const
+{
+    if (!m_available)
+    {
+        return false;
+    }
+
+    const int  nowMsec = sys::Milliseconds();
+    const bool inUse   = (m_numHeld > 0) || (m_keySeen && (nowMsec - m_lastKeyMsec) < kActiveMsec);
+    return inUse || (nowMsec - m_lastPollMsec) >= kIdlePollMsec;
+}
 
 bool Keyboard::NextEvent(Event & event)
 {
@@ -318,6 +343,21 @@ bool Keyboard::NextEvent(Event & event)
         return false;
     }
 
+    // Each read is a read() on the usbkbd:dev device file, through the same file client and IOP
+    // file server as the music stream's reads. One made while the music reader has a read out
+    // waits for it to land: over USB on a console, the Quake II port's frames stalled ~300 ms
+    // every 640 ms that way. The driver keeps the keys queued, so they are picked up once the
+    // read is done; checked per read, since each one sleeps and lets the reader start.
+    if (audio::MusicReadPending())
+    {
+        return false;
+    }
+
+    // A read made, as against one the music read put off: only this one restarts the idle
+    // interval, so a deferred poll is retried the next time round.
+    const int nowMsec = sys::Milliseconds();
+    m_lastPollMsec = nowMsec;
+
     PS2KbdRawKey raw = {};
     if (PS2KbdReadRaw(&raw) <= 0)
     {
@@ -325,6 +365,15 @@ bool Keyboard::NextEvent(Event & event)
     }
 
     const bool down = (raw.state == PS2KBD_RAWKEY_DOWN);
+
+    // Someone is at the keyboard, whether or not Quake has a use for this key.
+    m_keySeen     = true;
+    m_lastKeyMsec = nowMsec;
+    if (m_held[raw.key] != down)
+    {
+        m_held[raw.key] = down;
+        m_numHeld += down ? 1 : -1;
+    }
 
     if (raw.key == kUsageLeftShift || raw.key == kUsageRightShift)
     {
@@ -345,7 +394,7 @@ void Keyboard::Flush()
     {
         PS2KbdFlushBuffer();
     }
-    m_shiftKeys = 0;
+    ForgetHeldKeys();
 }
 
 } // namespace ps2::input

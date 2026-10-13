@@ -37,23 +37,47 @@ public:
     bool Init();
     void Shutdown();
 
+    // Whether the driver's queue is worth reading this time round: always while the keyboard is
+    // in use, every kIdlePollMsec otherwise. Ask once per round of NextEvent calls.
+    bool PollDue() const;
+
     // Takes the next key transition off the driver's queue into 'event'. Returns false once the
-    // queue is empty, and always while there is no driver. Each call is a SIF RPC, so the caller
-    // bounds how many it makes per frame; what is left stays queued for the next frame. Taking
-    // the events one at a time keeps re-entry safe: a key handler that polls for input itself
-    // (SCR_ModalMessage's Y/N prompt) takes the next ones off the same queue.
+    // queue is empty, and always while there is no driver. Each call is a read() on the driver's
+    // device file, an IOP round trip, so the caller bounds how many it makes per frame; what is
+    // left stays queued for the next frame. Also false, leaving the keys queued, while the music
+    // stream has a read out (see MusicReadPending). Taking the events one at a time keeps
+    // re-entry safe: a key handler that polls for input itself (SCR_ModalMessage's Y/N prompt)
+    // takes the next ones off the same queue.
     bool NextEvent(Event & event);
 
-    // Drops whatever the driver has queued and forgets which Shift keys were down: for a
-    // keyboard switched back on, so keys typed while it was off don't arrive late.
+    // Drops whatever the driver has queued and forgets which keys were down: for a keyboard
+    // switched back on, so keys typed while it was off don't arrive late.
     void Flush();
 
 private:
+    // How often the driver is polled. Every poll is a file read - an IOP round trip, which also
+    // waits behind any other file I/O in flight - and the driver can't say whether a keyboard is
+    // plugged in at all: its read comes back empty either way. So a keyboard nobody is using is
+    // polled every kIdlePollMsec, which puts the first key after a quiet spell up to that late,
+    // and one in use every frame: until kActiveMsec after the last key, and for as long as any
+    // key is held, so letting go after a long hold (running forward) is never the late one.
+    static constexpr int kActiveMsec   = 10 * 1000;
+    static constexpr int kIdlePollMsec = 250;
+
+    // Forgets every key held, for Shutdown and Flush.
+    void ForgetHeldKeys();
+
     bool m_available = false;
 
     // Which Shift keys are down: bit 0 the left one, bit 1 the right one. The driver reports raw
     // usages, so the typed characters' case is the input layer's to work out, as an OS's is.
     u8 m_shiftKeys = 0;
+
+    bool m_held[256]    = {};    // by raw USB usage, as the driver reports them
+    int  m_numHeld      = 0;     // how many of m_held are set
+    bool m_keySeen      = false; // whether m_lastKeyMsec holds anything yet
+    int  m_lastKeyMsec  = 0;     // when the last raw event came, mapped or not
+    int  m_lastPollMsec = 0;     // when the driver was last read
 };
 
 } // namespace ps2::input

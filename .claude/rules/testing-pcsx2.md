@@ -17,7 +17,10 @@
   `Slot1_Enable = false` in the ini simulates "no card".
 - `[USB1] Type = hidkbd` attaches a host-passthrough USB keyboard. It reports itself as JIS,
   and its boot `Missing host mapping for QKey` warnings are harmless. It sends HID usage
-  `0x34` for the host's `` ` `` key, never `0x35`.
+  `0x34` for the host's `` ` `` key, never `0x35`. `in_keyboard` defaults to 1 in debug builds
+  only, so a release build ignores it unless the config sets `in_keyboard "1"` (the tracked
+  `id1/config.cfg` does). An idle keyboard is read four times a second, so the first key after
+  a quiet spell can take up to 250 ms to land.
 - `Pad: DS2 Config Finished ... VS: Normal - VL: Normal` in the log means the vibration motors
   were mapped (`padSetActAlign`). `AL: On - AB: Locked` in the same line means the pad took the
   DualShock (analog) mode `pad.cpp` asks for, locked so the Analog button can't drop it.

@@ -21,6 +21,7 @@
 #include "ps2/input/keyboard.h"
 #include "ps2/input/pad.h"
 #include "ps2/input/rumble.h"
+#include "ps2/renderer/profile.h"
 #include "ps2/system/sys.h"
 #include "ps2/save/save_system.h"
 #include "ps2/math/math.h"
@@ -70,8 +71,10 @@ static cvar_t s_joySwapMoveLook       = ps2::MakeCvar("joy_swapmovelook",       
 static cvar_t s_joyEnable = ps2::MakeCvar("joy_enable", "1", CVAR_ARCHIVE);
 
 // The USB keyboard. Switching it on the first time brings its IOP driver up; switching it off
-// lets go of whatever it holds down.
-static cvar_t s_inKeyboard = ps2::MakeCvar("in_keyboard", "1", CVAR_ARCHIVE);
+// lets go of whatever it holds down. On by default in debug builds only: the keyboard is a
+// development tool here, and a build that never brings the driver up loads none of its IOP
+// modules and never polls it. Archived, so a value in config.cfg holds in either build.
+static cvar_t s_inKeyboard = ps2::MakeCvar("in_keyboard", PS2_QUAKE_DEBUG ? "1" : "0", CVAR_ARCHIVE);
 
 // QuakeSpasm's key event trace, here every pad button and keyboard usage as it arrives, mapped or
 // not. Which USB usage a physical key sends depends on the keyboard's layout (and, under PCSX2,
@@ -489,14 +492,19 @@ void IN_Shutdown()
 // Host_Frame itself), and from the loops that wait for a key (SCR_ModalMessage, Con_NotifyBox).
 void IN_Commands()
 {
+    PS2_PROFILE_SCOPED_EVENT(ps2::prof_evt::Input);
+
     s_gamepad.Update();
     SendPadKeys();
     ps2::input::UpdateRumble();
 }
 
-// Drains the keyboard's queue into key events, and repeats the held key.
+// Drains the keyboard's queue into key events, and repeats the held key. The queue is read every
+// call while the keyboard is in use and every quarter second otherwise (see Keyboard::PollDue).
 void IN_SendKeyEvents()
 {
+    PS2_PROFILE_SCOPED_EVENT(ps2::prof_evt::Input);
+
     SyncKeyboardEnabled();
     if (!s_keyboardEnabled)
     {
@@ -504,7 +512,8 @@ void IN_SendKeyEvents()
     }
 
     ps2::input::Keyboard::Event event;
-    for (int i = 0; i < kMaxKeyboardEventsPerPoll && s_keyboard.NextEvent(event); ++i)
+    const int maxEvents = s_keyboard.PollDue() ? kMaxKeyboardEventsPerPoll : 0;
+    for (int i = 0; i < maxEvents && s_keyboard.NextEvent(event); ++i)
     {
         if (s_inDebugKeys.value != 0.0f)
         {

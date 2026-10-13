@@ -304,9 +304,13 @@ bursts on the pad's two motors, which overlap when they run at the same time: ea
 the harder the hit), pickups (the bonus flash every pickup sends) and powerups coming on. It is
 off in menus, the console, demos and while paused; `in_rumble 0` turns it off.
 
-**A USB keyboard** is optional (`in_keyboard`). It sends keys by position, as on a US layout, and
-types through QuakeSpasm's text input (`Char_Event`) with Shift applied; the last key pressed
-repeats while held. `in_debugkeys 1` prints every pad button and keyboard usage as it arrives,
+**A USB keyboard** is optional (`in_keyboard`, on by default in debug builds only: it is a
+development tool, and a build that never brings its driver up loads none of its IOP modules). It
+sends keys by position, as on a US layout, and types through QuakeSpasm's text input
+(`Char_Event`) with Shift applied; the last key pressed repeats while held. Every poll is a file
+read on the IOP, so the keyboard is read every frame only while in use (a key in the last 10
+seconds, or one held) and four times a second otherwise, and never while the music stream has a
+read out, which the poll would wait for. `in_debugkeys 1` prints every pad button and keyboard usage as it arrives,
 mapped or not. `in_keyboardmap <usage> <key>` points a USB usage at another key: PCSX2's
 passthrough keyboard sends usage 0x34, the apostrophe, for the host's `` ` ``, so 0x34 opens the
 console by default, and `in_keyboardmap 0x34 '` gives the apostrophe back on real hardware.

@@ -11,8 +11,8 @@ field plus however much the work after the spin grew since the last frame; EE wo
 stable measure. A frame whose work passes one field (16683 us) waits for the next one, and
 Frame lands near 33.4 ms: that is a dropped frame.
 
-Host_ServerFrame and CL_ReadFromServer run before GL_BeginRendering rolls the profiler
-over, so the Server, ClParse and ClScene columns land one row early (see
+Host_ServerFrame, CL_ReadFromServer and the input polls run before GL_BeginRendering rolls
+the profiler over, so the Server, ClParse, ClScene and Input columns land one row early (see
 src/ps2/debug/engine_profile.h). They are shifted back here before anything is added up.
 ClParticles, SndMix and Music run after the rollover and need no shift. Sound is the
 feeder thread's time, spread across the other columns, so it is never subtracted.
@@ -109,7 +109,7 @@ def report_budget(rows, maps, views):
     # columns add up to its own Frame.
     prev = {}
     for r in rows:
-        for c in ('Server', 'ClParse', 'ClScene'):
+        for c in ('Server', 'ClParse', 'ClScene', 'Input'):
             if c in r:
                 r[c], prev[c] = prev.get(c, 0), r[c]
     for r in rows:
@@ -117,7 +117,7 @@ def report_budget(rows, maps, views):
         # Music (BGM_Update) runs just before S_Update, outside SndMix.
         eng = sum(r.get(c, 0) for c in ('Server', 'ClParse', 'ClScene', 'ClParticles'))
         snd = r.get('SndMix', 0) + r.get('Music', 0)
-        r['rest'] = r['ee'] - r['View'] - r['Ui'] - r['Overlay'] - snd - eng
+        r['rest'] = r['ee'] - r['View'] - r['Ui'] - r['Overlay'] - snd - eng - r.get('Input', 0)
 
     view = [r for r in rows if r['View'] > 0]
     noview = len(rows) - len(view)
@@ -206,7 +206,7 @@ def report_budget(rows, maps, views):
     bad = d + o
     cols = ['ee', 'View', 'World', 'Vis', 'TexChains', 'LmChains', 'Entities', 'EntCull', 'EntShade',
             'EntGeom', 'EntShadow', 'EntBrush', 'Particles', 'TurbSurfs', 'Sky', 'Ui', 'Overlay',
-            'Server', 'ClParse', 'ClScene', 'ClParticles', 'SndMix', 'Sound', 'Music', 'FsIo',
+            'Server', 'ClParse', 'ClScene', 'ClParticles', 'SndMix', 'Sound', 'Music', 'FsIo', 'Input',
             'GsWait', 'DmaSend', 'DmaFlush', 'rest',
             'tris', 'batches', 'particles', 'vramUploads', 'vramOomSyncs', 'vramResident',
             'chainKB', 'chainKicks', 'chainDrains']
