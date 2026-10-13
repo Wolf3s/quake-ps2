@@ -35,8 +35,9 @@ static cvar_t s_enabled = ps2::MakeCvar("ps2_perftest", "0", CVAR_ARCHIVE);
 constexpr const char * kDemos[] = { "demo1", "demo2", "demo3" };
 
 // A demo that never comes up, or never ends, is a failed run rather than a reason to sit there
-// forever. Both are far past anything the stock demos take.
-constexpr int kLoadTimeoutMs = 90 * 1000;
+// forever. Both are far past anything the stock demos take. The load allowance is a console's:
+// over USB a level load took from 78 s to over two minutes on the Quake II port.
+constexpr int kLoadTimeoutMs = 240 * 1000;
 constexpr int kPlayTimeoutMs = 10 * 60 * 1000;
 
 enum class State

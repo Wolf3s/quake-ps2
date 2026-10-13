@@ -149,6 +149,13 @@ paths:
 - **No EE cache emulation** (`EnableEECache = false`). Cache-locality work (prefetch, slimmer
   structs, UCAB/uncached buffers, reordering) reads as zero. Don't conclude it's worthless.
   To test it, turn the ini flag on (slow, edit with PCSX2 closed) or use hardware.
+- *(Q2)* **What a console showed against PCSX2, on the same debug ELF** (the first console
+  capture, 2026-10-10): EE work (Frame - VSync - GsWait) was 1.56x PCSX2's, 7.2 against 4.6 ms
+  (TexChains 1.95x, World 1.6x, LmChains 1.46x, EntGeom 1.3x, Sound and SndMix 1.65-2x): the
+  cache. GsWait was 5.4 ms a frame against 0.05: the GS and VU1 took ~12-13 ms a frame for ~4K
+  triangles, which PCSX2 charges nothing. An emergency chain drain cost ~8.6 ms a frame there,
+  against ~2 ms emulated. The guard band's width cost the GS nothing measurable (GsWait 5.39 ms
+  at 0.25, 5.42 ms at 0.8).
 - **No GS-internal cost.** CLUT loads, fill rate, texture cache and overdraw are free. Only
   data moved (DMA/GIF qwords) and EE/VU1 instructions are charged. For GS-side changes,
   promise "no regression", never a measurable win.
@@ -199,6 +206,16 @@ paths:
 - **Profiling a release build:** set `-DPS2_QUAKE_PROFILE=1` in the release `CONFIG_DEFS`,
   `rm -rf build/release/src`, `make release run` with `ps2_perftest 1`. Revert and rebuild
   clean afterwards.
+- **Capturing on a console:** the frame log goes to stdout, which nobody reads on a console.
+  Build with `PS2_QUAKE_FRAME_LOG_FILE=1` (profile.h, shipped as 0) and each 64-frame dump is
+  also appended to `id1/frame_log.txt` with one open, write and close, in the frame the log
+  already drops. A profiling release for a console capture:
+  `rm -rf build/release/src && make release CONFIG_DEFS='-DPS2_QUAKE_DEBUG=0 -DPS2_QUAKE_ASSERTS=0 -DPS2_QUAKE_PROFILE=1 -DPS2_QUAKE_FRAME_LOG_FILE=1 -DNDEBUG'`,
+  then the same `rm -rf` and a plain `make release` afterwards. Keep `ps2_logfile` off for a
+  capture: every console print through it is a USB write inside the frames being measured. The
+  perf test and the map cycle allow 240 s for a level load, a console's over USB.
+- **A PAL console runs at 50 Hz**, so its frames have 20 ms: `frame_budget.py --pal` budgets
+  against that field, where NTSC's would call every one of them over.
 - `build/baselines/` is untracked and local, holding captures, summaries and config backups.
 
 ## Every level: the map cycle's perf pass (`ps2_testmaps 2`, debug build)

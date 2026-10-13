@@ -17,6 +17,9 @@ src/ps2/debug/engine_profile.h). They are shifted back here before anything is a
 ClParticles, SndMix and Music run after the rollover and need no shift. Sound is the
 feeder thread's time, spread across the other columns, so it is never subtracted.
 
+--pal budgets against a 50 Hz field (20000 us) instead, for a capture from a PAL console:
+its frames all take at least one field, so the NTSC budget would call every one over.
+
 The map cycle's perf pass (ps2_testmaps 2) writes a FLOG#view marker before each
 viewpoint it turns around at, and the rows after it are that viewpoint's. The first 15
 of them (the teleport there, and what it uploads) count as settling, as a map's first
@@ -36,7 +39,7 @@ Prints, in order:
     and the next, which is what the load cost. The notes from loads and settling frames
     are only counted, unless --all-opens lists them too.
 
-Usage: frame_budget.py <emulog.txt|capture.flog> [--all-opens]
+Usage: frame_budget.py [--pal] <emulog.txt|capture.flog> [--all-opens]
 """
 import sys, statistics, collections
 
@@ -45,7 +48,10 @@ import sys, statistics, collections
 sys.dont_write_bytecode = True
 from summarize_flog import extract
 
-FIELD = 16683
+FIELD = 16683 # one NTSC field, in microseconds; main() switches it for --pal
+
+# The band under a field where a frame still makes it, with no margin left.
+TIGHT = 1683
 
 # Rows after a marker that count as settling: a map's loading work, and a viewpoint's teleport.
 MAP_SETTLE = 30
@@ -137,7 +143,7 @@ def report_budget(rows, maps, views):
     def classify(rs):
         dropped = [r for r in rs if r['Frame'] > FIELD * 1.5]
         over = [r for r in rs if r['ee'] > FIELD and r['Frame'] <= FIELD * 1.5]
-        tight = [r for r in rs if 15000 < r['ee'] <= FIELD and r['Frame'] <= FIELD * 1.5]
+        tight = [r for r in rs if FIELD - TIGHT < r['ee'] <= FIELD and r['Frame'] <= FIELD * 1.5]
         return dropped, over, tight
 
     print(f"rows {len(rows)}  with a 3D view {len(view)}  without (console/loading) {noview}")
@@ -146,9 +152,10 @@ def report_budget(rows, maps, views):
     for label, rs in (('steady', steady), ('settling', settle)):
         d, o, t = classify(rs)
         print(f"\n[{label}] {len(rs)} frames")
-        print(f"  dropped (Frame > 25 ms):            {len(d):5d}  {100*len(d)/max(1,len(rs)):5.2f}%")
-        print(f"  EE work > 16.68 ms, not dropped:    {len(o):5d}  {100*len(o)/max(1,len(rs)):5.2f}%")
-        print(f"  EE work 15.0-16.68 ms (no margin):  {len(t):5d}  {100*len(t)/max(1,len(rs)):5.2f}%")
+        field, tight = FIELD / 1000, (FIELD - TIGHT) / 1000
+        print(f"  {f'dropped (Frame > {field * 1.5:.0f} ms):':<36}{len(d):5d}  {100*len(d)/max(1,len(rs)):5.2f}%")
+        print(f"  {f'EE work > {field:.2f} ms, not dropped:':<36}{len(o):5d}  {100*len(o)/max(1,len(rs)):5.2f}%")
+        print(f"  {f'EE work {tight:.1f}-{field:.2f} ms (no margin):':<36}{len(t):5d}  {100*len(t)/max(1,len(rs)):5.2f}%")
         ee = [r['ee'] for r in rs]
         if ee:
             print(f"  EE work  mean {statistics.mean(ee):7.0f}  p50 {pct(ee,.5):6d}  p90 {pct(ee,.9):6d}"
@@ -173,7 +180,8 @@ def report_budget(rows, maps, views):
 
     # Per map. A map the log enters twice (a demo replayed) is listed once.
     print("\nPer map (steady frames):")
-    print(f"  {'map':<10}{'frames':>7}{'dropped':>9}{'ee>16.7':>9}{'ee>15':>7}{'ee p50':>8}{'ee p95':>8}"
+    over_hdr, tight_hdr = f'ee>{FIELD / 1000:.1f}', f'ee>{(FIELD - TIGHT) / 1000:.0f}'
+    print(f"  {'map':<10}{'frames':>7}{'dropped':>9}{over_hdr:>9}{tight_hdr:>7}{'ee p50':>8}{'ee p95':>8}"
           f"{'ee p99':>8}{'ee max':>8}{'  slowest viewpoint (ee p95)' if by_view else ''}")
     for name in dict.fromkeys(n for _, n in maps):
         rs = [r for r in steady if r['map'] == name]
@@ -190,7 +198,7 @@ def report_budget(rows, maps, views):
         over_views = [k for k, rs in by_view.items() if any(r['ee'] > FIELD or r['Frame'] > FIELD * 1.5 for r in rs)]
         print(f"\nViewpoints: {len(by_view)}, {len(over_views)} with a steady frame over budget."
               f" The 20 slowest by EE p95, with their frames' means:")
-        print(f"  {'map':<8}{'#':>3} {'kind':<13}{'origin':<20}{'frames':>7}{'ee>16.7':>8}{'ee>15':>6}"
+        print(f"  {'map':<8}{'#':>3} {'kind':<13}{'origin':<20}{'frames':>7}{over_hdr:>8}{tight_hdr:>6}"
               f"{'ee p50':>8}{'ee p95':>8}{'ee max':>8}{'View':>7}{'World':>7}{'Ent':>6}{'Sky':>6}{'tris':>6}")
         for k in sorted(by_view, key=lambda k: view_p95[k], reverse=True)[:20]:
             rs = by_view[k]
@@ -278,7 +286,11 @@ def report_opens(rows, opens, steady_ids, all_opens):
         print(f"  row {f:5d}  parse {col(a, 'ClParse')}  fs {col(a, 'FsIo')}  ee {ee(a)} / {ee(b)} us  {name}")
 
 def main():
+    global FIELD
     args = [a for a in sys.argv[1:] if a != '--all-opens']
+    if args[:1] == ['--pal']:
+        FIELD = 20000
+        args = args[1:]
     if len(args) != 1:
         sys.exit(__doc__.rstrip())
     rows, maps, views, opens = load(args[0])

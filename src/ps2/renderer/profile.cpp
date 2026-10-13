@@ -13,7 +13,14 @@
 #include "ps2/renderer/vu1.h"
 #include "ps2/renderer/vram.h"
 
+#include <cstdarg>
 #include <cstdio>
+
+#if PS2_QUAKE_FRAME_LOG_FILE
+#include "ps2/system/iop_boot.h" // SyncGameDataDevice
+#include <fcntl.h>
+#include <unistd.h>
+#endif // PS2_QUAKE_FRAME_LOG_FILE
 
 namespace ps2::prof_evt {
 
@@ -160,6 +167,95 @@ u32 ToMicrosec(u32 cycles)
     return static_cast<u32>((static_cast<u64>(cycles) * 1000u) / perMillisec);
 }
 
+// Everything the frame log writes goes through Emit, and each dump ends with Commit. Emit prints
+// straight to stdout - the PCSX2 emulog's path - one call per row, as ever. With
+// PS2_QUAKE_FRAME_LOG_FILE (profile.h) a dump is built here instead and goes out at Commit: to
+// stdout as one write, and appended to <gamedir>/frame_log.txt with one open, write and close.
+// That is how a capture gets off a console, which has no stdout anyone reads; ps2_logfile can't
+// carry it, since every console print it copies is a USB write inside the frames being measured.
+void Emit(const char * format, ...) Q_PRINTF_FUNC(1, 2);
+
+#if PS2_QUAKE_FRAME_LOG_FILE
+
+// A dump: a 64-frame batch at a few hundred characters a row, its open notes and the header.
+constexpr int kOutBytes = 64 * 1024;
+static char s_out[kOutBytes];
+static int  s_outUsed    = 0;
+static bool s_outStarted = false; // the first dump of a run truncates the file
+static bool s_outFailed  = false; // and one that fails to write turns it off for the run
+
+void Emit(const char * format, ...)
+{
+    const int room = kOutBytes - s_outUsed;
+    if (room <= 1)
+    {
+        return;
+    }
+
+    va_list args;
+    va_start(args, format);
+    const int n = std::vsnprintf(s_out + s_outUsed, static_cast<size_t>(room), format, args);
+    va_end(args);
+
+    if (n > 0)
+    {
+        s_outUsed += (n < room) ? n : (room - 1);
+    }
+}
+
+void Commit()
+{
+    if (s_outUsed == 0)
+    {
+        return;
+    }
+
+    std::fputs(s_out, stdout);
+
+    if (!s_outFailed)
+    {
+        char path[sizeof(com_gamedir) + sizeof("/frame_log.txt")];
+        std::snprintf(path, sizeof(path), "%s/frame_log.txt", com_gamedir);
+
+        const int flags = s_outStarted ? O_WRONLY : (O_WRONLY | O_CREAT | O_TRUNC);
+        const int fd    = open(path, flags, 0666);
+        bool written    = (fd >= 0);
+        if (fd >= 0)
+        {
+            written = (lseek(fd, 0, SEEK_END) >= 0) && (write(fd, s_out, static_cast<size_t>(s_outUsed)) == s_outUsed);
+            // A successful close on USB/HDD returns the iomanX slot, not 0 (see ps2-platform.md).
+            written = (close(fd) >= 0) && written;
+            written = (ps2::sys::SyncGameDataDevice() == 0) && written;
+        }
+        s_outStarted = true;
+
+        if (!written)
+        {
+            s_outFailed = true;
+            std::printf("FLOG#note,writing %s failed; stdout only from here\n", path);
+        }
+    }
+
+    s_outUsed = 0;
+    s_out[0]  = '\0';
+}
+
+#else // !PS2_QUAKE_FRAME_LOG_FILE
+
+void Emit(const char * format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    std::vprintf(format, args);
+    va_end(args);
+}
+
+void Commit()
+{
+}
+
+#endif // PS2_QUAKE_FRAME_LOG_FILE
+
 bool Enabled()
 {
     return s_frameLog.value != 0.0f;
@@ -172,14 +268,14 @@ void WriteBatch()
     if (!s_headerDone)
     {
         s_headerDone = true;
-        std::printf("FLOG#hdr,frame,"
-                    "Frame,VSync,GsWait,DmaSend,DmaFlush,View,World,Vis,"
-                    "TexChains,LmChains,Entities,EntCull,EntShade,EntGeom,EntShadow,EntBrush,"
-                    "Particles,TurbSurfs,Sky,Ui,Overlay,Sound,Server,ClParse,ClScene,ClParticles,SndMix,FsIo,Music,Input,"
-                    "tris,batches,particles,"
-                    "vramUploads,vramOomSyncs,vramResident,"
-                    "chainKB,chainKicks,chainDrains\n");
-        std::printf("FLOG#note,timings are microseconds\n");
+        Emit("FLOG#hdr,frame,"
+             "Frame,VSync,GsWait,DmaSend,DmaFlush,View,World,Vis,"
+             "TexChains,LmChains,Entities,EntCull,EntShade,EntGeom,EntShadow,EntBrush,"
+             "Particles,TurbSurfs,Sky,Ui,Overlay,Sound,Server,ClParse,ClScene,ClParticles,SndMix,FsIo,Music,Input,"
+             "tris,batches,particles,"
+             "vramUploads,vramOomSyncs,vramResident,"
+             "chainKB,chainKicks,chainDrains\n");
+        Emit("FLOG#note,timings are microseconds\n");
     }
 
     // Built into one buffer and written with a single printf: every call is a
@@ -208,16 +304,16 @@ void WriteBatch()
                           s.chainKB, s.chainKicks, s.chainDrains);
         }
 
-        std::printf("%s", line);
+        Emit("%s", line);
     }
 
     for (int i = 0; i < s_openCount && i < kMaxOpenNotes; ++i)
     {
-        std::printf("FLOG#open,%u,%s\n", s_openNotes[i].frameIndex, s_openNotes[i].name);
+        Emit("FLOG#open,%u,%s\n", s_openNotes[i].frameIndex, s_openNotes[i].name);
     }
     if (s_openCount > kMaxOpenNotes)
     {
-        std::printf("FLOG#open,%u,+%d more\n", s_openOverflowRow, s_openCount - kMaxOpenNotes);
+        Emit("FLOG#open,%u,+%d more\n", s_openOverflowRow, s_openCount - kMaxOpenNotes);
     }
     s_openCount = 0;
 
@@ -300,6 +396,7 @@ void FrameLogFlush()
         return;
     }
     WriteBatch();
+    Commit();
 }
 
 void FrameLogFinish()
@@ -316,7 +413,8 @@ void FrameLogFinish()
     }
 
     // Lets the reader tell a completed capture from one the emulator cut short.
-    std::printf("FLOG#end,%u\n", s_frameIndex);
+    Emit("FLOG#end,%u\n", s_frameIndex);
+    Commit();
     std::fflush(stdout);
 }
 
@@ -353,7 +451,8 @@ void FrameLogMarkMap(const char * mapName)
     {
         return;
     }
-    std::printf("FLOG#map,%u,%s\n", s_frameIndex, (mapName != nullptr) ? mapName : "?");
+    Emit("FLOG#map,%u,%s\n", s_frameIndex, (mapName != nullptr) ? mapName : "?");
+    Commit();
 }
 
 void FrameLogMarkView(const char * what)
@@ -362,7 +461,9 @@ void FrameLogMarkView(const char * what)
     {
         return;
     }
-    std::printf("FLOG#view,%u,%s\n", s_frameIndex, (what != nullptr) ? what : "?");
+    // Left for the next dump to carry: a file build's write here would land in a frame the pass
+    // measures, and the scripts order the markers by their row, not by where they are in the log.
+    Emit("FLOG#view,%u,%s\n", s_frameIndex, (what != nullptr) ? what : "?");
 }
 
 } // namespace ps2::debug

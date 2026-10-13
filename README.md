@@ -277,7 +277,10 @@ loads every level in the paks in turn (the campaign in play order, then the deat
 prints what each costs in memory. `ps2_perftest 1` (profile builds) plays the three demos with the
 frame log on and quits, and `ps2_testmaps 2` does the same over every level: it turns a full
 circle at a few viewpoints spread over each, then quits. Both captures are for the scripts in
-[src/tools/scripts/frame_log/](src/tools/scripts/frame_log/).
+[src/tools/scripts/frame_log/](src/tools/scripts/frame_log/) (`frame_budget.py --pal` for a PAL
+console's). A console has no stdout anyone reads: a build with `PS2_QUAKE_FRAME_LOG_FILE=1`
+appends the capture to `id1/frame_log.txt` as well
+([performance.md](.claude/rules/performance.md) has the recipe).
 
 ---
 

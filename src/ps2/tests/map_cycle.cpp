@@ -70,8 +70,10 @@ enum class State
     Touring   // Perf pass: map is up; looking around from each of its viewpoints.
 };
 
-// A map that never comes up is a failed test, not a reason to hang forever.
-constexpr int kLoadTimeoutMs = 90 * 1000;
+// A map that never comes up is a failed test, not a reason to hang forever. The allowance is a
+// console's, as the perf test's is: over USB a level load took over two minutes on the Quake II
+// port.
+constexpr int kLoadTimeoutMs = 240 * 1000;
 
 // The level has to be up for this many frames before it counts as loaded: it guards the window
 // between Cbuf_AddText and the command running, where the previous map is still up.
