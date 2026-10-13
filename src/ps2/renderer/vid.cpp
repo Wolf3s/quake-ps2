@@ -81,8 +81,8 @@ void ReadInitCvars()
 // QuakeSpasm's video module draws Options' "Video Options" page itself, through the vid_menu*fn
 // hooks menu.c calls (gl_vidsdl.c's has the PC's modes). This one has the PS2's, laid out as
 // QuakeSpasm's Options page is: the TV standard and the framebuffer format, which apply on the next
-// boot, and the dithering and GS latency, which apply at once. Each row steps its cvar through its
-// values with left, right or Enter.
+// boot, then the dithering, the GS latency, the FPS counter and the debug panels, which apply at
+// once. Each row steps its cvar through its values with left, right or Enter.
 
 struct VideoRow
 {
@@ -101,10 +101,12 @@ constexpr const char * kFbFormatNames[]  = { "16-bit", "32-bit" };
 constexpr const char * kOffOn[]          = { "0", "1" };
 
 const VideoRow kVideoRows[] = {
-    { "Video mode",  "auto is the console's own; on restart",   &s_videoMode,    kVideoModes, kVideoModeNames, 3 },
-    { "Color depth", "16-bit leaves more VRAM; on restart",     &s_fb16Bit,      kFbFormats,  kFbFormatNames,  2 },
-    { "Dithering",   "hides 16-bit color banding",              &s_enableDither, kOffOn,      nullptr,         2 },
-    { "GS latency",  "a frame ahead: faster, one frame of lag", &s_gsLatency,    kOffOn,      nullptr,         2 },
+    { "Video mode",     "auto is the console's own; on restart",   &s_videoMode,                         kVideoModes, kVideoModeNames, 3 },
+    { "Color depth",    "16-bit leaves more VRAM; on restart",     &s_fb16Bit,                           kFbFormats,  kFbFormatNames,  2 },
+    { "Dithering",      "hides 16-bit color banding",              &s_enableDither,                      kOffOn,      nullptr,         2 },
+    { "GS latency",     "a frame ahead: faster, one frame of lag", &s_gsLatency,                         kOffOn,      nullptr,         2 },
+    { "Show FPS",       "frames per second, at the top right",     &ps2::overlay::FpsCounterCvar(),      kOffOn,      nullptr,         2 },
+    { "Debug overlays", "memory, VRAM and profiling panels",       &ps2::overlay::DebugOverlaysCvar(),   kOffOn,      nullptr,         2 },
 };
 
 constexpr int kNumVideoRows = ps2::ArrayLength(kVideoRows);

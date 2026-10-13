@@ -80,8 +80,9 @@ The engine still builds the text (`Key_WriteBindings`, `Cvar_WriteVariables`, in
   key-number order, then the archived cvars in their name-sorted list, each as the string it was
   set to, then `vid_restart`. A config in gives the same bytes out, from the debug and the
   release build alike (2026-10-12). What the builds differ in is the defaults of the debug
-  panels (`ps2_debug_overlays`, `ps2_show_*`: on in debug, off in release), which only show
-  in a config written without those lines. Code that sets an archived cvar for its own
+  overlays' two switches (`ps2_debug_overlays` and `ps2_show_fps`: on in debug, off in release;
+  the panels' own `ps2_show_*` are on in both since 2026-10-14), which only show in a config
+  written without those lines. Code that sets an archived cvar for its own
   purposes puts it back before a quit (the perf capture does, `perf_run.cpp`).
 - **Read:** emulator = the host file first, the card as fallback. Console = **the card first**,
   then the game data's `id1/config.cfg`. `exec config.cfg` and the early reads

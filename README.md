@@ -420,7 +420,9 @@ implements those directly, with no GL underneath. All of it draws but fog, which
   recorded - a model the cache evicts mid-frame - is released once that frame has drawn.
 - **Debug overlays** ([overlays.cpp](src/ps2/renderer/overlays.cpp)): an FPS counter and
   panels for frame times, memory, VRAM and draw statistics, on by default in debug builds
-  (see [CVARS.md](CVARS.md)).
+  (see [CVARS.md](CVARS.md)). Options → Video Options → Show FPS and Debug overlays turn the
+  counter and the panels on and off in any build; a release build draws the memory and VRAM
+  panels, the others need a profile build.
 - **Screenshots.** `screenshot` reads the last finished frame back out of VRAM, turning the GS
   bus around for it, and writes `id1/spasmNNNN.tga`.
 
