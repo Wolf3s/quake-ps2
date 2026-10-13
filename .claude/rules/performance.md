@@ -215,14 +215,12 @@ paths:
 
 ## Capture recipe (`ps2_perftest`, ~4 min, debug build)
 
-1. Back up `build/debug/history.txt`, and put `ps2_perftest 1` in `id1/autoexec.cfg` (or
-   `ps2_perftest "1"` in the config). `make run`.
+1. Put `ps2_perftest 1` in `id1/autoexec.cfg` (or `ps2_perftest "1"` in the config). `make run`.
 2. Wait for `PerfRun: complete` / `FLOG#end` in emulog, then copy `emulog.txt` into
    `build/baselines/<tag>.emulog.txt` before the next launch overwrites it.
-3. Restore the history, and delete the `autoexec.cfg`. The run turns the `ps2_show_*` panels
-   off and puts them back before its quit, so the config comes out as it went in (checked
-   2026-10-12); armed from the config, `ps2_perftest` comes back as 0. Stop PCSX2: after the
-   quit it sits in the BIOS menu.
+3. Delete the `autoexec.cfg`. The run turns the `ps2_show_*` panels off and puts them back before
+   its quit, so the config comes out as it went in (checked 2026-10-12); armed from the config,
+   `ps2_perftest` comes back as 0. Stop PCSX2: after the quit it sits in the BIOS menu.
 4. `src/tools/scripts/frame_log/summarize_flog.py <emulog> --rows build/baselines/<tag>.flog`,
    then `compare_flog.py <before> <after>`. `frame_budget.py` realigns Server, ClParse,
    ClScene and Input (they land one row early) and lists each mid-level `FLOG#open` load with its cost

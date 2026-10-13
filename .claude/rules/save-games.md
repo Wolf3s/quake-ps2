@@ -102,8 +102,8 @@ The engine still builds the text (`Key_WriteBindings`, `Cvar_WriteVariables`, in
 - Scripted from `id1/autoexec.cfg`: `ps2_savedevice mc`, `map e1m1`, waits, `save s3` (twice,
   for the A/B swap), `ps2_saveinfo`, `menu_load` with a `screenshot`, `load s3`. Config: `quit`
   with `ps2_savedevice mc` writes both files; then boot with the host `config.cfg` moved away
-  and it is read off the card. **Back up `memcards/Mcd001.ps2`, `id1/config.cfg` and
-  `history.txt` first and restore them after**: the card holds the user's Quake II saves too.
+  and it is read off the card. **Back up `memcards/Mcd001.ps2` and `id1/config.cfg` first and
+  restore them after**: the card holds the user's Quake II saves too.
 - The PCSX2 card (`memcards/Mcd001.ps2`) is a raw 8 MB image: 528-byte pages (512 bytes + 16
   bytes of ECC), the superblock "Sony PS2 Memory Card Format", the FAT via `ifc_list`, and
   512-byte directory entries with the name at 0x40. A ~90-line Python reader lists and extracts

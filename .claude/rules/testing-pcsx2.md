@@ -63,9 +63,8 @@
   `git diff id1/config.cfg` after a run shows what the run changed. **Restore it with
   `git checkout id1/config.cfg` after a scripted run that set an archived cvar**, unless the change
   is the point. Check `git status` first: an uncommitted edit of the user's would be lost. Start
-  every run of a comparison from the same config. The main menu's Quit exits at once, writing it
-  and `build/<config>/history.txt` (the console history): clean both up after a user's test that
-  quit that way.
+  every run of a comparison from the same config. The main menu's Quit exits at once, writing it:
+  clean it up after a user's test that quit that way.
 
 ## Scripting a session
 

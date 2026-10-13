@@ -166,8 +166,9 @@ Record QuakeSpasm quirks here as they are found.
   right after any `default.cfg`. Binds made in `IN_Init` wouldn't last: it runs before
   `quake.rc`, and `default.cfg` opens with `unbindall`.
 - The main menu's Quit exits at once (QuakeSpasm's "Quit now!"; the Y/N box only with
-  `-fitz`), through `Host_Shutdown`, which writes `id1/config.cfg` and the console history,
-  `history.txt`, in the user dir (on `host:`, `build/<config>/`).
+  `-fitz`), through `Host_Shutdown`, which writes `id1/config.cfg`. QuakeSpasm's console
+  history file, `history.txt` in the user dir, is neither read at boot nor written on exit here
+  (`History_Init`, tagged; 2026-10-14).
 - `Key_Event` prints "`<KEY>` is unbound, hit F4 to set." for an unbound key numbered 200 or
   more on every press, in menus too. Every pad key is one, which is why Circle, the menus'
   Back, has a default bind.

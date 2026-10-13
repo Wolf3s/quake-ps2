@@ -766,7 +766,9 @@ void History_Init (void)
 	}
 	key_linepos = 1;
 
-	hf = fopen(va("%s/%s", host_parms->userdir, HISTORY_FILE_NAME), "rt");
+	// [PS2_QUAKE]: no history.txt, read here or written by History_Shutdown on exit: a console
+	// with a pad has little use for the typed history, and the file would be one more write on quit.
+	hf = NULL;
 	if (hf != NULL)
 	{
 		do

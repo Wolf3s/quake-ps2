@@ -944,8 +944,8 @@ void Host_Shutdown(void)
 
 	if (cls.state != ca_dedicated)
 	{
-		if (con_initialized)
-			History_Shutdown ();
+		// [PS2_QUAKE]: no history.txt: the console's command history isn't kept across runs (see
+		// History_Init).
 		BGM_Shutdown();
 		CDAudio_Shutdown ();
 		S_Shutdown ();
