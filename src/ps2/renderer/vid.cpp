@@ -13,6 +13,7 @@
 #include "ps2/engine_hooks.h"
 #include "ps2/debug/log_file.h"
 #include "ps2/system/sys.h"
+#include "ps2/system/iop_boot.h"
 #include "ps2/system/heap.h"
 #include "ps2/renderer/render_system.h"
 #include "ps2/renderer/cmd_buffer.h"
@@ -25,6 +26,7 @@
 #include "ps2/save/save_system.h"
 #include "ps2/tests/map_cycle.h"
 #include "ps2/tests/perf_run.h"
+#include "ps2/tests/test_quit.h"
 
 #include <algorithm>
 #include <cstring>
@@ -100,6 +102,9 @@ void VID_Init()
     ps2::debug::LogFileRegisterCvar();
     ps2::save::Init();
     ps2::test::RegisterPerfTestCvar();
+#if PS2_QUAKE_DEBUG || PS2_QUAKE_PROFILE
+    ps2::test::RegisterTestQuitCvar();
+#endif // PS2_QUAKE_DEBUG || PS2_QUAKE_PROFILE
 #if PS2_QUAKE_DEBUG
     ps2::test::InitMapCycle();
 #endif // PS2_QUAKE_DEBUG
@@ -369,6 +374,9 @@ qboolean Image_WriteTGA(const char * name, byte * data, int width, int height, i
     Sys_FileWrite(handle, header, static_cast<int>(sizeof(header)));
     Sys_FileWrite(handle, data, size);
     Sys_FileClose(handle);
+
+    // On the HDD a closed file's metadata can still be cached by PFS (see SyncGameDataDevice).
+    ps2::sys::SyncGameDataDevice();
     return true;
 }
 

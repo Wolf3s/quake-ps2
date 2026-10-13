@@ -31,7 +31,7 @@ void InitMapCycle();
 // visited. Both passes print the memory lines as they leave each map.
 //
 // The memory pass (1) stays "ps2_testmaps_dwell" seconds in each map once it has loaded, and
-// ends with "MapCycle: done." without quitting.
+// ends with "MapCycle: done.".
 //
 // The perf pass (2) sets up a capture as the perf run does (BeginPerfCapture in perf_run.h). In
 // each map it turns god mode and notarget on, so nothing in the level ends or changes the tour,
@@ -39,7 +39,10 @@ void InitMapCycle();
 // the intermission camera, deathmatch start or teleporter exit farthest from those already
 // picked, reached with "setpos" (which leaves the player in noclip). At each it writes an
 // "FLOG#view" marker and turns a full circle, 2 degrees a frame. At the end it writes the frame
-// log's tail and quits.
+// log's tail.
+//
+// Either pass then quits, unless "ps2_test_quit" is 0, which leaves the game up and the test
+// ready to run again (test_quit.h).
 void RunMapCycle();
 
 } // namespace ps2::test

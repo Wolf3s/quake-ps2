@@ -20,6 +20,7 @@
 #if PS2_QUAKE_PROFILE
 #include "ps2/renderer/profile.h"
 #include "ps2/system/sys.h"
+#include "ps2/tests/test_quit.h"
 #endif // PS2_QUAKE_PROFILE
 
 namespace ps2::test {
@@ -59,12 +60,15 @@ static int   s_issuedAtMs  = 0;
 static int   s_startedAtMs = 0;
 static int   s_failed      = 0;
 
-// The on-screen debug panels a capture turns off, and the values they had before it: archived,
-// so the capture puts them back ahead of its quit, and a run leaves config.cfg as it found it.
-constexpr const char * kPanelCvars[] = {
-    "ps2_show_fps", "ps2_show_memstats", "ps2_show_vramstats", "ps2_show_drawstats", "ps2_show_profile"
+// What a capture turns off, and the values they had before it, put back when it ends, ahead of any
+// quit: the on-screen debug panels are archived, so a run leaves config.cfg as it found it, and
+// the game stays as it was if the run leaves it up (ps2_test_quit 0). developer 0 keeps
+// Con_DPrintf out of the run: each line is a round trip to the IOP, a spike in whatever frame it
+// lands in.
+constexpr const char * kCaptureCvars[] = {
+    "developer", "ps2_show_fps", "ps2_show_memstats", "ps2_show_vramstats", "ps2_show_drawstats", "ps2_show_profile"
 };
-static char s_panelValues[ps2::ArrayLength(kPanelCvars)][MAX_QPATH] = {};
+static char s_savedValues[ps2::ArrayLength(kCaptureCvars)][MAX_QPATH] = {};
 
 void StartDemo()
 {
@@ -89,12 +93,21 @@ void NextDemoOrFinish()
     Con_Printf("PerfRun: complete - %d of %d demos played, %d timed out.\n",
                ps2::ArrayLength(kDemos) - s_failed, ps2::ArrayLength(kDemos), s_failed);
 
-    // Disarm before quitting, so the config the quit writes has it back at 0. A run that never
-    // reaches here (a crash, or the emulator being closed) deliberately stays armed.
-    Cvar_SetQuick(&s_enabled, "0");
-
     EndPerfCapture();
-    s_done = true;
+
+    // EndTest disarms it before quitting, so the config the quit writes has it back at 0. A run
+    // that never reaches here (a crash, or the emulator being closed) deliberately stays armed.
+    if (EndTest("PerfRun", s_enabled.name))
+    {
+        s_done = true;
+        return;
+    }
+
+    // Staying up for another test.
+    s_state      = State::Idle;
+    s_stopFrames = 0;
+    s_nextDemo   = 0;
+    s_failed     = 0;
 }
 #endif // PS2_QUAKE_PROFILE
 
@@ -109,23 +122,20 @@ void RegisterPerfTestCvar()
 void BeginPerfCapture()
 {
     // Set directly rather than through the command buffer: they have to be in effect before
-    // the first measured frame. developer 0 keeps Con_DPrintf out of the run - each line is
-    // a round trip to the IOP, a spike in whatever frame it lands in.
-    Cvar_Set("developer", "0");
+    // the first measured frame. developer goes to 0 and every on-screen debug panel off (see
+    // kCaptureCvars): the panels cost EE time of their own, and the frame log carries every
+    // number they show. EndPerfCapture puts them back.
+    for (int i = 0; i < ps2::ArrayLength(kCaptureCvars); ++i)
+    {
+        q_strlcpy(s_savedValues[i], Cvar_VariableString(kCaptureCvars[i]), sizeof(s_savedValues[i]));
+        Cvar_Set(kCaptureCvars[i], "0");
+    }
     Cvar_Set("ps2_frame_log", "1");
 
     // Every file the run opens gets a line in the log, which is how a load mid-level names
     // itself. Only these runs ask for them: a map load opens hundreds of files, and each note
     // is a line the next dump sends through the IOP.
     ps2::debug::FrameLogNoteOpens(true);
-
-    // And every on-screen debug panel off: they cost EE time of their own, and the frame log
-    // carries every number they show. EndPerfCapture puts them back.
-    for (int i = 0; i < ps2::ArrayLength(kPanelCvars); ++i)
-    {
-        q_strlcpy(s_panelValues[i], Cvar_VariableString(kPanelCvars[i]), sizeof(s_panelValues[i]));
-        Cvar_Set(kPanelCvars[i], "0");
-    }
 }
 
 void EndPerfCapture()
@@ -134,15 +144,14 @@ void EndPerfCapture()
     // the end, which is what tells a completed capture apart from one the emulator cut short.
     ps2::debug::FrameLogFinish();
 
-    // The panels as they were, for the config the quit writes. Nothing is measured from here on.
-    for (int i = 0; i < ps2::ArrayLength(kPanelCvars); ++i)
+    // Nothing is measured from here on. The frame log goes off whatever it was before the run: a
+    // second capture in the session turns it on again, and appends to the same log.
+    ps2::debug::FrameLogNoteOpens(false);
+    Cvar_Set("ps2_frame_log", "0");
+    for (int i = 0; i < ps2::ArrayLength(kCaptureCvars); ++i)
     {
-        Cvar_Set(kPanelCvars[i], s_panelValues[i]);
+        Cvar_Set(kCaptureCvars[i], s_savedValues[i]);
     }
-
-    // Through the command buffer, so the quit runs at the top of the next frame, from where
-    // Host_Shutdown takes everything down in the usual order.
-    Cbuf_AddText("quit\n");
 }
 
 void RunPerfTest()

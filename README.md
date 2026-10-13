@@ -216,6 +216,13 @@ about a console's.
 | `ps2_dump_iop_mods` | Prints the boot's `IOP boot:` report, lists the IOP modules loaded now, and says how much IOP memory is free in one block. |
 | `screenshot` | QuakeSpasm's own, TGA only: reads the last frame back out of GS VRAM and writes `id1/spasmNNNN.tga`. |
 | `ps2_saveinfo` | Says where saves are going, and lists the memory card's save directory. |
+| `menu_debug` | Opens the debug page (below), as QuakeSpasm's `menu_options` opens its own. |
+
+**The debug page**, Options → Debug Options, puts these on the gamepad, for a console with no
+keyboard: the log file on or off, the IOP report, the save list, `condump` (the console's text to
+`id1/condump.txt`), a screenshot of the next frame without the menu (`id1/spasmNNNN.tga`), and in
+the builds that have them, `ps2_test_quit` and the perf test and map cycle below. A report row opens the console on what it printed; there L2 and R2 scroll it, as PgUp
+and PgDn do on a keyboard ([debug_menu.cpp](src/ps2/debug/debug_menu.cpp)).
 
 **The log file.** `ps2_logfile 1` copies everything the console prints, plus a `Sys_Error` and the
 reports printed on the way to one (the debug build's EE exception report, render pipeline dump and
@@ -275,8 +282,10 @@ call stack the same way before its error screen.
 Unattended tests are armed by cvars (see [CVARS.md](CVARS.md)). `ps2_testmaps 1` (debug builds)
 loads every level in the paks in turn (the campaign in play order, then the deathmatch maps) and
 prints what each costs in memory. `ps2_perftest 1` (profile builds) plays the three demos with the
-frame log on and quits, and `ps2_testmaps 2` does the same over every level: it turns a full
-circle at a few viewpoints spread over each, then quits. Both captures are for the scripts in
+frame log on, and `ps2_testmaps 2` does the same over every level: it turns a full circle at a few
+viewpoints spread over each. Each test quits when it ends; `ps2_test_quit 0` leaves the game up
+for the next one instead, which is how the debug page runs several tests in a session on a
+console. Both captures are for the scripts in
 [src/tools/scripts/frame_log/](src/tools/scripts/frame_log/) (`frame_budget.py --pal` for a PAL
 console's). A console has no stdout anyone reads: a build with `PS2_QUAKE_FRAME_LOG_FILE=1`
 appends the capture to `id1/frame_log.txt` as well
@@ -391,8 +400,9 @@ defaults, but for wider dead zones: 0.25 of the stick's travel instead of 0.175,
 DualShock 2's stick can rest far enough off centre to turn the camera on its own. Past the dead
 zone the response still ramps up from zero. The defaults also turn `cl_alwaysrun` on, so the
 stick's deflection sets the pace all the way up to a run. Outside a game the left stick works as the arrow keys, and held buttons
-repeat, so menus scroll. Unlike QuakeSpasm's, `joy_enable 0` switches off only the sticks: the
-pad is all the input most PS2s have.
+repeat, so menus scroll. While the console is down, L2 and R2 scroll it, as PgUp and PgDn: a pad
+has no way to reach those keys. Unlike QuakeSpasm's, `joy_enable 0` switches off only the sticks:
+the pad is all the input most PS2s have.
 
 **Rumble** ([rumble.cpp](src/ps2/input/rumble.cpp)) answers what happens to the player with short
 bursts on the pad's two motors, which overlap when they run at the same time: each weapon's shots

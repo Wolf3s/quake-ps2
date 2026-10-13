@@ -97,8 +97,10 @@ The rest are scripted runs:
   paks (the campaign in play order, then the rest alphabetically: pak1's dm1-dm6), names the
   campaign maps the data lacks, loads each for 8 s (`ps2_testmaps_dwell`), prints a
   `MapCycle [n/N] <map> <pak>` line per map (hunk, cache, backend tags, heap peak, RAM free) and
-  ends with `MapCycle: done.` without quitting: stop PCSX2 then. `ps2_testmaps 2` is its perf pass
-  (see the perf run below).
+  ends with `MapCycle: done.`, then quits (`MapCycle: done - quitting now`), which writes a
+  config: the card's in a scratch run, so restore it. With `ps2_test_quit 0` it stays up instead
+  (`... the game stays up for the next test`), as every test does. `ps2_testmaps 2` is its perf
+  pass (see the perf run below).
 - **Running a test on chosen data without touching `id1/`:** copy `build/debug/quake.elf` into a
   scratch directory beside an `id1/` of symlinks (`pak0.pak` alone is the shareware data: id's
   1.06 releases ship the same pak0; add `pak1.pak` and `music` for the full game) and its own
@@ -128,7 +130,11 @@ The rest are scripted runs:
   e1m1 to e1m2 change drew 6 loading frames over 49 files and 2.8 MB in 1.8 s.
 - **Perf run** (profile builds): `ps2_perftest 1` in `autoexec.cfg` plays the demos, and
   `ps2_testmaps 2` tours every level; the recipes are in [performance.md](performance.md). Both
-  quit at the end, which writes `config.cfg`.
+  quit at the end, which writes `config.cfg`, unless `ps2_test_quit` is 0.
+- **The debug page** (Options → Debug Options, or `menu_debug`): a script can't press the pad,
+  but `menu_debug`, `w10` and a `screenshot` show it, and its rows are commands and cvars to run
+  directly. The cursor blinks between conchars 12 and 13 four times a second, so a shot catches
+  it only every other quarter second.
 - **Movement check across builds** (for physics and collision changes): a script that, on a few
   maps after `god 1` and `notarget 1`, holds `+forward`, `+moveright`, `+back` and `+jump` for set
   `wait` counts with a `viewpos` after each, run on the old and the new ELF. Put `host_maxfps 20`

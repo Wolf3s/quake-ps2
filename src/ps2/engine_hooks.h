@@ -2,10 +2,10 @@
  * File: engine_hooks.h
  * Brief: What QuakeSpasm's C needs from the backend that no QuakeSpasm header declares: the PS2
  *        stand-ins for the few OpenGL calls made outside the renderer (the status bar's alpha
- *        and scissor, the view blend, the screenshot readback), the loading screen, the PS2's
- *        additions to the default config, where save games and config.cfg are kept, and the
- *        engine state the backend reads that QuakeSpasm keeps to one file. Every engine line that
- *        uses this is tagged [PS2_QUAKE].
+ *        and scissor, the view blend, the screenshot readback), the loading screen, the debug
+ *        page, the PS2's additions to the default config, where save games and config.cfg are
+ *        kept, and the engine state the backend reads that QuakeSpasm keeps to one file. Every
+ *        engine line that uses this is tagged [PS2_QUAKE].
  *        NOTE: Shared header between C and C++.
  *
  * This source code is released under the GNU GPL v2 license.
@@ -68,6 +68,16 @@ void PS2_FileOpening(const char * fileName);
 // screen of its own (renderer/loading_screen.h).
 void PS2_LoadingScreenBegin(void);
 void PS2_LoadingScreenEnd(void);
+
+// ------------------------------------------------------------------------------------------------
+// The debug page (menu.c)
+// ------------------------------------------------------------------------------------------------
+
+// Options' "Debug Options" row opens the page (m_state m_ps2debug), and M_Draw and M_Keydown hand
+// it its frames and keys while it is up (src/ps2/debug/debug_menu.cpp).
+void PS2_DebugMenuOpen(void);
+void PS2_DebugMenuDraw(void);
+void PS2_DebugMenuKey(int key);
 
 // ------------------------------------------------------------------------------------------------
 // Configs (cmd.c)

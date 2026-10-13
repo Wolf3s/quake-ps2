@@ -119,6 +119,11 @@ For rumble: `view.c` calls `PS2_RumbleDamage` from `V_ParseDamage` and `PS2_Rumb
 `V_BonusFlash_f`. For the memory reports: `zone.c` adds `Cache_UsedBytes` (the cache's list is
 private to it), which `ps2_testmaps` prints.
 
+For the debug page (`engine_hooks.h`, `ps2/debug/debug_menu.cpp`): `menu.h` adds `m_ps2debug` to
+`m_state_e`, and `menu.c` an `OPT_PS2DEBUG` row ("Debug Options") ahead of `OPT_VIDEO`, which
+stays last as its hiding logic needs, and hands the page its frames and keys in `M_Draw` and
+`M_Keydown`.
+
 For saves and settings (`save-games.md`): `host_cmd.c`'s `Host_Savegame_f` and
 `Host_Loadgame_f`, and `menu.c`'s `M_ScanSaves`, read and write through the `PS2_Save*` hooks;
 `host.c`'s `Host_WriteConfiguration` and `cmd.c`'s `Cmd_Exec_f` (for `config.cfg` only) through

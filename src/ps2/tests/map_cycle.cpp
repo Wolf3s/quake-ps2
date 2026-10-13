@@ -15,6 +15,7 @@
 #if PS2_QUAKE_DEBUG
 #include "ps2/tests/map_cycle.h"
 #include "ps2/tests/perf_run.h"
+#include "ps2/tests/test_quit.h"
 #include "ps2/renderer/profile.h"
 #include "ps2/system/heap.h"
 #include "ps2/system/sys.h"
@@ -99,6 +100,10 @@ static int    s_hunkPeak      = 0; // Hunk in use plus cache, the most any map t
 static char   s_targetBsp[MAX_QPATH] = {};
 static bool   s_perfPass      = false; // this pass is "ps2_testmaps 2"
 static int    s_cutShort      = 0;     // perf pass: levels left before their tour ended
+
+// A perf pass's capture runs from its first map to its last, and a "ps2_testmaps_restart" in
+// between starts the maps over in the same one. Set back when the pass ends it.
+static bool   s_captureStarted = false;
 
 void Restart()
 {
@@ -622,14 +627,22 @@ void Finish()
     ReportHeap(++s_passesRun);
     Con_Printf("MapCycle: done.\n");
 
-    s_done = true;
-
 #if PS2_QUAKE_PROFILE
     if (s_perfPass)
     {
         EndPerfCapture();
+        s_captureStarted = false;
     }
 #endif // PS2_QUAKE_PROFILE
+
+    // Staying up for another test, it can run again from the first map: the passes are numbered
+    // on (above), so drift between them shows.
+    if (EndTest("MapCycle", s_enabled.name))
+    {
+        s_done = true;
+        return;
+    }
+    Restart();
 }
 
 // Reads which pass this is and lists the maps. The perf pass starts its capture here, before the
@@ -639,8 +652,6 @@ void BeginPass()
     s_perfPass = (static_cast<int>(s_enabled.value) == 2);
 
 #if PS2_QUAKE_PROFILE
-    // Once per boot: a "ps2_testmaps_restart" mid-pass starts the maps over in the same capture.
-    static bool s_captureStarted = false;
     if (s_perfPass && !s_captureStarted)
     {
         s_captureStarted = true;

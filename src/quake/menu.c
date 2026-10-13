@@ -21,7 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "quakedef.h"
-#include "ps2/engine_hooks.h" // [PS2_QUAKE]: the save game hooks
+#include "ps2/engine_hooks.h" // [PS2_QUAKE]: the save game hooks and the debug page
 #include "bgmusic.h"
 
 void (*vid_menucmdfn)(void); //johnfitz
@@ -990,6 +990,7 @@ enum
 //#ifdef _WIN32
 //	OPT_USEMOUSE,
 //#endif
+	OPT_PS2DEBUG, // [PS2_QUAKE]: the backend's debugging aids, on the gamepad
 	OPT_VIDEO,	// This is the last before OPTIONS_ITEMS
 	OPTIONS_ITEMS
 };
@@ -1250,6 +1251,9 @@ void M_Options_Draw (void)
 	M_Print (16, 32 + 8*OPT_LOOKSTRAFE,	"            Lookstrafe");
 	M_DrawCheckbox (220, 32 + 8*OPT_LOOKSTRAFE, lookstrafe.value);
 
+	// OPT_PS2DEBUG: [PS2_QUAKE]
+	M_Print (16, 32 + 8*OPT_PS2DEBUG,	"         Debug Options");
+
 	// OPT_VIDEO:
 	if (vid_menudrawfn)
 		M_Print (16, 32 + 8*OPT_VIDEO,	"         Video Options");
@@ -1292,6 +1296,9 @@ void M_Options_Key (int k)
 				Cbuf_AddText ("resetcfg\n");
 				Cbuf_AddText ("exec default.cfg\n");
 			}
+			break;
+		case OPT_PS2DEBUG: // [PS2_QUAKE]
+			PS2_DebugMenuOpen ();
 			break;
 		case OPT_VIDEO:
 			M_Menu_Video_f ();
@@ -2660,6 +2667,10 @@ void M_Draw (void)
 	case m_slist:
 		M_ServerList_Draw ();
 		break;
+
+	case m_ps2debug: // [PS2_QUAKE]
+		PS2_DebugMenuDraw ();
+		break;
 	}
 
 	if (m_entersound)
@@ -2741,6 +2752,10 @@ void M_Keydown (int key)
 
 	case m_slist:
 		M_ServerList_Key (key);
+		return;
+
+	case m_ps2debug: // [PS2_QUAKE]
+		PS2_DebugMenuKey (key);
 		return;
 	}
 }

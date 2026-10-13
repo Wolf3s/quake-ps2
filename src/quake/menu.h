@@ -40,7 +40,8 @@ enum m_state_e {
 	m_lanconfig,
 	m_gameoptions,
 	m_search,
-	m_slist
+	m_slist,
+	m_ps2debug // [PS2_QUAKE]: Options' "Debug Options" page, drawn by the backend (engine_hooks.h)
 };
 
 extern enum m_state_e m_state;

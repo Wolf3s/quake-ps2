@@ -96,6 +96,10 @@ double Seconds()
 
 void RegisterCommands()
 {
+    // Options' "Debug Options" page (debug/debug_menu.cpp), as QuakeSpasm's menu_* commands open
+    // its own pages: from a keyboard, or a script.
+    Cmd_AddCommand("menu_debug", &PS2_DebugMenuOpen);
+
     // What the boot found and did, then what runs on the IOP now, and its memory left.
     Cmd_AddCommand("ps2_dump_iop_mods", []() {
         PrintIopBootReport(&Con_Printf);

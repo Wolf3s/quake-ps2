@@ -186,6 +186,7 @@ struct PadKey
 {
     bool down;
     int  repeatMs;
+    int  key; // what the press sent, which its repeats and its release send too
 };
 
 static PadKey s_buttonKeys[kNumButtons] = {};
@@ -212,22 +213,42 @@ void UpdatePadKey(PadKey & padKey, const bool isDown, const int key, const char 
         if (!isDown)
         {
             padKey.down = false;
-            TracePadKey(name, key, false);
-            Key_Event(key, false);
+            TracePadKey(name, padKey.key, false);
+            Key_Event(padKey.key, false);
         }
         else if (now >= padKey.repeatMs)
         {
             padKey.repeatMs = now + kPadRepeatIntervalMs;
-            Key_Event(key, true);
+            Key_Event(padKey.key, true);
         }
     }
     else if (isDown)
     {
         padKey.down     = true;
         padKey.repeatMs = now + kRepeatDelayMs;
+        padKey.key      = key;
         TracePadKey(name, key, true);
         Key_Event(key, true);
     }
+}
+
+// The key a button sends when it goes down. In the console L2 and R2 scroll it, as PgUp and PgDn
+// do on a keyboard: a pad has no way to reach those, and the reports the debug page prints there
+// run past a screen. Out of the console they keep their binds.
+int KeyForButton(const ButtonKey & button)
+{
+    if (key_dest == key_console)
+    {
+        if (button.key == K_LTRIGGER)
+        {
+            return K_PGUP;
+        }
+        if (button.key == K_RTRIGGER)
+        {
+            return K_PGDN;
+        }
+    }
+    return button.key;
 }
 
 void SendPadKeys()
@@ -237,7 +258,7 @@ void SendPadKeys()
         // Read afresh for every button: a re-entered IN_Commands polls the pad again and sends
         // whatever changed there.
         const bool down = (s_gamepad.Buttons() & kButtonKeys[i].button) != 0;
-        UpdatePadKey(s_buttonKeys[i], down, kButtonKeys[i].key, kButtonKeys[i].name);
+        UpdatePadKey(s_buttonKeys[i], down, KeyForButton(kButtonKeys[i]), kButtonKeys[i].name);
     }
 
     // Outside a game the left stick works the menus, the console and the chat line as the arrow
