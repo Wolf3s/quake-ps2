@@ -145,6 +145,21 @@ The rest are scripted runs:
   against **the same build's** `quake_unstripped.elf`:
   `mips64r5900el-ps2-elf-addr2line -f -C -e build/debug/quake_unstripped.elf <addr>` or
   `build/tools/symbolize < emulog.txt`.
+- **A render pipeline hang** (debug builds: a GS wait that ran past a second) prints the dump
+  the README describes, then stops with `Sys_Error: Render pipeline hang: ...`. To exercise it
+  for real (not a zero timeout, whose registers show a finished DMA), emit a DIRECT block whose GIF
+  tag promises more than it carries, e.g. `GIF_SET_TAG(0x7FFF, 1, 0, 0, GIF_FLG_IMAGE, 0)` plus
+  one qword, with render_system.cpp's `OpenDirect`/`DirectCursor`/`SetDirectCursor`/`CloseDirect`
+  on the Nth 3D frame, after the world pass (`rs::KickBuilt`) so MSCALs precede it. *(Q2)* PCSX2 wedges as hardware would:
+  `D1_CHCR STR=1`, VIF1 `VGW=1` on a FLUSH, GIF `APATH=PATH2 OPH=1`, and the chain trail flags
+  the packet. PCSX2 reads the GIF tag registers and VPU-STAT as 0; only a console fills those in.
+- *(Q2)* **VU1 memory that repeats one output shape** throughout means a microprogram looped on a
+  corrupt count, its output wrapping around all 1024 qwords, constants included. In a 2026-10-10
+  console log five particle-sprite qwords filled all of it. Simulate the program's writes
+  (start, stride, count, wrap at 1024) against the dumped memory: only TOP 8 with count 0x7FFF
+  matched every qword, and it put the XGKICK on the qword the `GIF_TAG` registers held, with no
+  EOP anywhere, so PATH1 never closed. The cause was the particle batch overrun
+  (vu-microprograms.md); the dump now flags a particle count out of range.
 - **Known flake, never game code:** a `TLB Miss` in `_request_end` (ps2sdk `sifrpc.c`,
   `SIF_CMD_RPC_END`) during `host:` file I/O, usually right after a pak file is opened. The
   signature is one to three `TLB Miss, pc=<same> addr=0x10|0x18 [load|store]` lines:

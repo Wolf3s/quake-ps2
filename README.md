@@ -218,7 +218,8 @@ about a console's.
 | `ps2_saveinfo` | Says where saves are going, and lists the memory card's save directory. |
 
 **The log file.** `ps2_logfile 1` copies everything the console prints, plus a `Sys_Error` and the
-debug build's EE exception report, to `quake.log` next to `id1/`: `build/<config>/quake.log` on
+reports printed on the way to one (the debug build's EE exception report, render pipeline dump and
+stack traces, the out-of-memory stats), to `quake.log` next to `id1/`: `build/<config>/quake.log` on
 `host:`, the game data's folder on the HDD or the USB drive. It opens with the boot report. Each
 line is stamped with the seconds since `main()` began. The configs that can turn the log on only run
 once `Host_Init` is done, so until it is on, the first 16 KB of output waits in RAM and goes in
@@ -228,6 +229,30 @@ sync), so a run that hangs or crashes still leaves its log up to the last line. 
 close is followed by a `fileXioSync` of the mounted partition. On the Quake II port's console that
 cost about 23 ms a line over USB, so a load timed with the log on mostly measures the log. A write
 that fails turns logging off, with a warning on stdout.
+
+**Render pipeline hangs.** In debug builds every wait on the GS
+([cmd_buffer.cpp](src/ps2/renderer/cmd_buffer.cpp)) gives up after about a second, dumps the
+pipeline and stops with `Sys_Error("Render pipeline hang: ...")`. The dump
+([pipeline_dump.cpp](src/ps2/debug/pipeline_dump.cpp)) has the VIF1 DMA channel, VIF1, VU1's run
+state (VPU-STAT), the GIF and its tag registers, and the GS CSR, each raw and decoded. Then come:
+
+- the raw qwords just before `D1_TADR`, where the DMAC stopped;
+- the chain trail: every DMA tag from the start of the stuck chain up to `D1_TADR` is walked, and
+  the last 32 are printed with their VIFcodes decoded (UNPACKs, `MSCAL` addresses, FLUSHes, DIRECT
+  sizes). A DIRECT's GIF packet is followed tag by tag, so a packet that asks for more data than
+  its block holds, which holds PATH2 open forever, is called out;
+- which microprogram ran last (the last `MSCAL` on the way), and its GS packet in VU1 memory,
+  checked the same way in that program's layout. A particle batch header holding a count the EE
+  can't send is flagged, and the packet is read where that count made the program kick;
+- all 16 KB of VU1 data memory;
+- the call stack of the wait that gave up.
+
+All of it goes to stdout and to the log file, about 1,100 lines, so a hang on a console leaves
+the whole report in `quake.log`. Before the error screen draws, it stops DMA channels 1 and 2 and
+resets VIF1, VU1 and the GIF, in libgs's `GsResetPath` order
+([scr_print.cpp](src/ps2/debug/scr_print.cpp)): a GIF still holding a path open would otherwise
+keep the error screen's own transfers out. Running out of memory prints dlmalloc's state and the
+call stack the same way before its error screen.
 
 Unattended tests are armed by cvars (see [CVARS.md](CVARS.md)). `ps2_testmaps 1` (debug builds)
 loads every level in the paks in turn (the campaign in play order, then the deathmatch maps) and

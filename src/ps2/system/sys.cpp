@@ -344,10 +344,12 @@ void Sys_Error(const char * error, ...)
 
     // Also to stdout and the log file, so a capture or a console's log says why the run
     // stopped. No Host_Shutdown, unlike QuakeSpasm's desktop Sys_Error: it would write
-    // config.cfg out of whatever state the error left the engine in.
-    PrintToLog("\nSys_Error: ", /*fatal=*/true);
-    PrintToLog(text, /*fatal=*/true);
-    PrintToLog("\n", /*fatal=*/true);
+    // config.cfg out of whatever state the error left the engine in. One write, since the log's
+    // fatal path starts each write on a fresh line; static, to keep another 1 KB off whichever
+    // thread's stack failed.
+    static char s_logText[sizeof(text) + 16];
+    std::snprintf(s_logText, sizeof(s_logText), "\nSys_Error: %s\n", text);
+    PrintToLog(s_logText, /*fatal=*/true);
 
     ps2::debug::ScrInit();
     ps2::debug::ScrSetTextColor(0xFF0000FF); // red text

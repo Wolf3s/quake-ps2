@@ -147,6 +147,18 @@ The boot code (`system/iop_boot.cpp`) is the Quake II port's as of quake2-ps2 94
   the log on mostly measures the log; PCSX2's USB image took 12 to 30 ms a line. A successful
   `close()` on USB or the HDD returns the iomanX slot, not 0 (libcglue passes iomanX's result
   through); only a negative one is a failure. `host:` returns 0, which hid that in PCSX2.
+- **On a console, `quake.log` is the only report.** Fatal reports (the pipeline hang dump,
+  stack traces, the out-of-memory stats) go through `ps2::debug::DumpPrintf` (log_file.h), to
+  stdout and the log. Anything new printed on a fatal path must use it, not `printf`. *(Q2)* The
+  first hardware pipeline hang (2026-10-07) logged only `Sys_Error: Render pipeline hang: ... See
+  the pipeline dump above.`, because the dump went to stdout alone.
+- *(Q2)* **A hardware pipeline hang ended on a solid green screen**, with no `Sys_Error` text
+  drawn, though the log had the `Sys_Error` line. Likely, but unconfirmed: `ScrInit` resets the
+  GS, then its PATH3 transfers can't get through a GIF still holding PATH1/PATH2 open, so
+  `DmaWaitGif` spins. `ScrInit` now runs `ResetGraphicsPaths` first (scr_print.cpp), in libgs's
+  `GsResetPath` order: stop DMA channels 1 and 2 under a DMAC suspend, reset VIF1, VU1 (if the
+  thread has COP2), then the GIF. PCSX2 still draws the error screen after it, but can't wedge
+  the GIF, so whether it cures the green screen needs the next hardware hang.
 - The console boot finds the ELF's folder from `argv[0]`, whatever the loader's spelling
   (`mass:/dir/quake.elf`, `mass0:dir/quake.elf`, `hdd0:__common:pfs:/...`), and tries it on every
   `massN:` unit before the roots. PCSX2 passes `host:` and the ELF's absolute host path, even

@@ -30,6 +30,7 @@
 #include "ps2/qwords.h"
 #include "ps2/debug/profile.h"
 #include "ps2/debug/pipeline_dump.h"
+#include "ps2/debug/log_file.h" // DumpPrintf
 #include "ps2/renderer/profile.h"
 #include "ps2/renderer/texture.h"
 
@@ -41,7 +42,7 @@
 #include <packet2_chain.h>
 #include <packet2_utils.h>
 #include <packet2_vif.h>
-#include <vif_registers.h> // VIF1_TOPS
+#include <vif_registers.h> // VIF1_TOP, VIF1_TOPS
 
 namespace ps2::rs {
 namespace {
@@ -604,12 +605,59 @@ void EnsureTextureResident(const tex::Texture & texture)
 // left to read it is the memory it wrote.
 Q_COLD_FUNC void DumpVuWorkInProgress()
 {
-    // Which half XTOP handed the microprograms this run.
+    // XTOP reads TOP: the half the last MSCAL handed its microprogram, so its output windows hold
+    // what that program XGKICKed. TOPS is the other half, where the next batch is unpacked.
+    const int top  = static_cast<int>(VIF1_TOP);
     const int tops = static_cast<int>(VIF1_TOPS);
 
-    debug::DumpVu1DataMemory("batch header, params and GIF tags", tops + vu1::kBatchHeaderAddr, 9);
-    debug::DumpVu1DataMemory("output window A", tops + vu1::kOutputWindowAAddr, vu1::kNumGifTagQwords);
-    debug::DumpVu1DataMemory("output window B", tops + vu1::kOutputWindowBAddr, vu1::kNumGifTagQwords);
+    const int triangles = static_cast<int>(vu1::ProgramAddress(vu1::Program::TexturedTriangles));
+    const int particles = static_cast<int>(vu1::ProgramAddress(vu1::Program::Particles));
+
+    debug::DumpPrintf("VU1: the last batch ran at TOP %d, the next one unpacks at TOPS %d. "
+                      "MSCAL targets: TexturedTriangles %d, Particles %d.\n",
+                      top, tops, triangles, particles);
+    debug::DumpVu1DataMemory("last batch: header and what follows", top, 11);
+
+    // Where the last program built its GS packet depends on which one it was, which only the
+    // chain trail can say: the last MSCAL it walked past. Read with the wrong layout, a packet
+    // looks broken when it isn't, so with no MSCAL in this chain it isn't decoded at all.
+    const int mscal = debug::LastChainTrailMscal();
+    if (mscal == triangles)
+    {
+        debug::DumpVu1GifPacket("TexturedTriangles, output window A", top + vu1::kOutputWindowAAddr, vu1::kOutputWindowQwords);
+        debug::DumpVu1GifPacket("TexturedTriangles, output window B", top + vu1::kOutputWindowBAddr, vu1::kOutputWindowQwords);
+    }
+    else if (mscal == particles)
+    {
+        // Built right after the input particles: the 7 tag qwords, then 5 per particle. The program
+        // takes the count as it finds it - the low 16 bits, through a VI register - and the EE
+        // asserts every count it sends, so one out of range was written over the header in VU
+        // memory. The program then looped that many times, its sprites wrapping around VU1 memory,
+        // and kicked wherever that count put the packet, which is the qword to decode.
+        const u32 count = debug::Vu1DataWord(top + vu1::kPrtBatchHeaderAddr, 3) & 0xFFFFu;
+        if (count == 0 || count > static_cast<u32>(vu1::kMaxParticlesPerBatch))
+        {
+            const int kick = static_cast<int>((static_cast<u32>(top + vu1::kPrtDataAddr) + count) &
+                                              static_cast<u32>(debug::kVu1DataMemoryQwords - 1));
+            debug::DumpPrintf("VU1: THE PARTICLE COUNT IN THE HEADER IS %u, NOT 1..%d - something overwrote "
+                              "it in VU memory.\n", count, vu1::kMaxParticlesPerBatch);
+            debug::DumpVu1GifPacket("Particles, where that count put the kick", kick, debug::kVu1DataMemoryQwords);
+        }
+        else
+        {
+            const int n = static_cast<int>(count);
+            debug::DumpVu1GifPacket("Particles, its GS packet", top + vu1::kPrtDataAddr + n, vu1::kNumGifTagQwords + (5 * n));
+        }
+    }
+    else
+    {
+        debug::DumpPrintf("VU1: the program that ran last isn't in this chain, so its GS packet is not "
+                          "decoded. The whole memory below still has it.\n");
+    }
+
+    // All of it, whichever program ran: the batches in both halves, the frame and light constants,
+    // the clipper's scratch.
+    debug::DumpVu1DataMemory("all of it", 0, debug::kVu1DataMemoryQwords);
 }
 
 #endif // PS2_QUAKE_DEBUG
