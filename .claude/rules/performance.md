@@ -122,6 +122,38 @@ paths:
   ~1.7 ms was I/O. The design is in the user's plan file
   `~/.claude/plans/i-want-you-to-binary-spindle.md`.
 
+## Loading
+
+- **What sizes a drive read** (the IOP side of every `read()` on `mass:`/`pfs:`):
+  - fileXio serves it in pieces of its IOP buffer, each an `iomanX_read` plus a DMA to the EE,
+    waited out before the next. Stock size 16 KB; the boot sets 64 KB
+    (`PS2_QUAKE_FILEXIO_BUFFER_KB`, iop_boot.cpp) once the drive's modules are loaded.
+  - PFS reads a whole run of contiguous zones in one transfer, up to the piece size
+    (`fileTransfer`, pfs_fio.c). So on the HDD the buffer sets the ATA transfer size.
+  - FatFs (bdmfs_fatfs, R0.16) ends every direct read at a cluster's end (`f_read`'s "Clip at
+    cluster boundary"), and usbmass_bd caps a SCSI command at 128 sectors (64 KB). So a USB read
+    is at most one cluster, whatever the buffer. macOS formats a 16 GB stick with 8 KB clusters;
+    `newfs_msdos -F 32 -c 64` makes them 32 KB (`diskutil` can't choose).
+  - BDM caches reads under 8 sectors (`bd_cache.c`, 32 × 4 KB), so FAT walks for seeks come
+    mostly from cache. FatFs has `FF_USE_FASTSEEK 0` and `FF_FS_TINY 1`.
+- *(Q2)* **What the buffer and the clusters bought** (2026-10-11/12, a PAL console, release + I/O
+  log, base2 from the pak): over USB with 8 KB clusters and the 16 KB buffer 58.6 s; with 32 KB
+  clusters and the 64 KB buffer 40.4 s; from the HDD (PFS, 64 KB buffer) 15.8 s. Fitting the USB
+  reads to *time = commands × c + bytes / B* gives c ≈ 5 ms a command and B ≈ 900 KB/s, near USB
+  1.1's ceiling; small files still cost ~4-5 ms of command overhead each. A large read off the
+  stick ran 460-580 KB/s with 8 KB clusters and 650-790 KB/s with 32 KB. The HDD read at ~1.35
+  MB/s or 6-8 MB/s, the fast runs following a read of the bytes just before them (the drive's
+  read-ahead).
+- **Timing loads on a console:** a release build with the I/O log,
+  `rm -rf build/release/src && make release CONFIG_DEFS='-DPS2_QUAKE_DEBUG=0 -DPS2_QUAKE_ASSERTS=0 -DPS2_QUAKE_PROFILE=0 -DNDEBUG -DPS2_QUAKE_IO_LOG=1'`,
+  then the same `rm -rf` and a plain `make release` afterwards. Start each load by a level change
+  or from the load menu: a `map` (the console's, or New Game) raises no plaque and isn't logged.
+  The file is written when a load ends, and the in-game console says where. Keep `ps2_logfile`
+  off: its writes would land in the load. A console whose HDD holds the game data loads from it;
+  move that copy aside to time USB (don't skip the HDD drivers: ps2-platform.md). PCSX2 models
+  neither drive's speed: there the e1m1 to e1m2 change spent 0.39 s of 1.70 s in file calls from
+  `host:`, and 3.41 s of 4.86 s from its USB image (2026-10-13), neither a console's figure.
+
 ## EE codegen facts
 
 - **Count memory ops, not instructions.** ALU is the cheap half of this machine. A version

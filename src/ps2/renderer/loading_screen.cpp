@@ -9,6 +9,7 @@
 #include "ps2/common.h"
 #include "ps2/engine_hooks.h"
 #include "ps2/renderer/loading_screen.h"
+#include "ps2/debug/io_log.h"
 #include "ps2/debug/load_trace.h"
 #include "ps2/system/sys.h"
 
@@ -93,6 +94,9 @@ void PS2_LoadingScreenBegin()
 {
     using namespace ps2::loading;
 
+    // The I/O log, when built in, records the plaque's lifetime (debug/io_log.h).
+    ps2::iolog::LoadBegin();
+
     s_active    = true;
     s_beginMsec = ps2::sys::Milliseconds();
     s_drawCount = 0;
@@ -113,4 +117,5 @@ void PS2_LoadingScreenEnd()
                        s_drawCount, s_fileCount, s_bytesRead / 1024u, ps2::sys::Milliseconds() - s_beginMsec);
     }
     s_active = false;
+    ps2::iolog::LoadEnd();
 }

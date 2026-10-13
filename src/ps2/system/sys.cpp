@@ -11,6 +11,7 @@
 #include "ps2/engine_hooks.h"
 #include "ps2/system/sys.h"
 #include "ps2/system/iop_boot.h"
+#include "ps2/debug/io_log.h"
 #include "ps2/debug/load_trace.h"
 #include "ps2/debug/log_file.h"
 #include "ps2/debug/scr_print.h"
@@ -429,11 +430,13 @@ void Sys_SendKeyEvents()
 // ------------------------------------------------------------------------------------------------
 
 // The opens, seeks and reads below are what COM_LoadFile and the pak reads come down to, so they
-// carry the FsIo profile event: every load the engine makes is timed, whichever phase made it.
+// carry the FsIo profile event: every load the engine makes is timed, whichever phase made it. In a
+// build with the I/O log, each is charged to the file COM_FindFile named last (debug/io_log.h).
 
 int Sys_FileOpenRead(const char * path, int * hndl)
 {
     PS2_PROFILE_SCOPED_EVENT(ps2::prof_evt::FsIo);
+    const ps2::iolog::ScopedCall ioLogCall;
 
     const int handle = FindFileHandle();
     std::FILE * file = std::fopen(path, "rb");
@@ -443,6 +446,7 @@ int Sys_FileOpenRead(const char * path, int * hndl)
         *hndl = -1;
         return -1;
     }
+    ps2::iolog::LooseFile();
 
     s_fileHandles[handle] = file;
     *hndl = handle;
@@ -465,6 +469,7 @@ int Sys_FileOpenWrite(const char * path)
 
 void Sys_FileClose(int handle)
 {
+    const ps2::iolog::ScopedCall ioLogCall;
     std::fclose(s_fileHandles[handle]);
     s_fileHandles[handle] = nullptr;
 }
@@ -472,6 +477,7 @@ void Sys_FileClose(int handle)
 void Sys_FileSeek(int handle, int position)
 {
     PS2_PROFILE_SCOPED_EVENT(ps2::prof_evt::FsIo);
+    const ps2::iolog::ScopedCall ioLogCall;
     std::fseek(s_fileHandles[handle], position, SEEK_SET);
 }
 
@@ -488,7 +494,9 @@ int Sys_FileRead(int handle, void * dest, int count)
     int bytesRead;
     {
         PS2_PROFILE_SCOPED_EVENT(ps2::prof_evt::FsIo);
+        ps2::iolog::ScopedCall ioLogCall;
         bytesRead = static_cast<int>(std::fread(dest, 1, static_cast<size_t>(count), s_fileHandles[handle]));
+        ioLogCall.bytes = bytesRead;
     }
 
     PS2_LOAD_TRACE("read %s: %d KB in %d ms", ps2::loading::CurrentFile(), (bytesRead + 1023) / 1024,
@@ -501,6 +509,7 @@ void PS2_FileOpening(const char * fileName)
 {
     ps2::debug::FrameLogNoteOpen(fileName);
     ps2::loading::NoteFile(fileName);
+    ps2::iolog::FileOpening(fileName);
 }
 
 int Sys_FileWrite(int handle, const void * data, int count)

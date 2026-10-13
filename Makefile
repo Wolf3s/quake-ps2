@@ -121,6 +121,7 @@ PS2_CXX_SRC =                         \
 	ps2/debug/exception_handler.cpp   \
 	ps2/debug/log_file.cpp            \
 	ps2/debug/load_trace.cpp          \
+	ps2/debug/io_log.cpp              \
 	ps2/debug/debug_menu.cpp          \
 	ps2/debug/profile.cpp
 
@@ -180,6 +181,7 @@ SIZE_OPT_CXX_SRC =                    \
 	ps2/debug/exception_handler.cpp   \
 	ps2/debug/log_file.cpp            \
 	ps2/debug/load_trace.cpp          \
+	ps2/debug/io_log.cpp              \
 	ps2/debug/debug_menu.cpp          \
 	ps2/debug/profile.cpp
 

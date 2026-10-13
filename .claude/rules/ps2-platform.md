@@ -119,12 +119,21 @@ The boot code (`system/iop_boot.cpp`) is the Quake II port's as of quake2-ps2 94
   `.text` until the boot closed the port (`StartPadDriver`). LaunchELF closes its ports first.
 - **IOP memory for the later drivers:** the sound, pad and card drivers and the keyboard took
   324 KB of the largest free IOP block in PCSX2 (1284 KB after a USB boot, 960 KB with all of
-  them up; debug build, 2026-10-13; 312 KB on the Quake II port). No RPC reports free IOP memory;
-  `LargestFreeIopBlockBytes()` halves its way there with `SifAllocIopHeap`.
+  them up; debug build, 2026-10-13; 312 KB on the Quake II port). The 64 KB fileXio read buffer
+  left 1220 KB after the boot. No RPC reports free IOP memory; `LargestFreeIopBlockBytes()`
+  halves its way there with `SifAllocIopHeap`.
+- **`fileXioSetRWBufferSize` frees the old buffer before allocating the new one**, and on
+  failure keeps a null buffer and the new size (fileXio_iop.c), so every later read would DMA
+  from IOP address 0. On a nonzero result `SetFileXioBuffer` (iop_boot.cpp) sets the stock
+  16 KB again. Read sizes per layer are in [performance.md](performance.md).
 - **HDD drivers and limits:** ps2dev9 → ps2atad → ps2hdd → ps2fs (the standard `ps2hdd.irx`
   already uses iomanX; `ps2hdd-iomanx.irx` is a virtual-disk variant). Missing hardware or a
   failed HDD driver falls through to USB: with PCSX2's HDD off, ps2dev9 doesn't start (result 1)
-  and the boot goes on to USB 2 ms later. APA's default single open handle can't list
+  and the boot goes on to USB 2 ms later. *(Q2)* **Don't skip them on a console that has an
+  HDD:** a test build that went straight to the USB chain hung on a black screen at boot on the
+  user's console with an HDD attached (2026-10-11), and the same code with the probe back booted
+  from USB. Not diagnosed; PCSX2 with an HDD image didn't reproduce it. To test USB there, move
+  the HDD's copy of the game aside. APA's default single open handle can't list
   partitions while PFS has one mounted, so the boot passes `-o 4 -n 20`; PFS's default two open
   files can't cover the paks, the music, the log and a load, so it passes `-m 1 -o 16 -n 40`
   (NUL-separated). PFS's cache must be at least `2 * maxOpen + 8`.

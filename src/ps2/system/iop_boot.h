@@ -50,6 +50,11 @@ void PrintIopBootReport(void (*printer)(const char *, ...));
 // returns 0 on success or the negative driver error code on failure.
 int SyncGameDataDevice();
 
+// The IOP buffer fileXio serves every HDD/USB read through, in bytes, which caps how much one
+// device read asks for (see PS2_QUAKE_FILEXIO_BUFFER_KB in iop_boot.cpp). 0 on host: boots,
+// which read through the ROM's FILEIO instead.
+int FileXioBufferBytes();
+
 // Whether the ROM FILEIO module's remove() has been patched (sbv_patch_fileio, applied on the
 // host: fast path). Unpatched, every remove() falls through into a mkdir() of the same path,
 // so a deleted file comes back as an empty directory; callers deleting on host: undo that.

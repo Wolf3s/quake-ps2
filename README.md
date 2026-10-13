@@ -179,6 +179,16 @@ mass:/QUAKE/
   loaded or reset, and when each step finished.
 - **If it finds nothing**, the error screen shows the path the loader passed, the folders it searched,
   the HDD's status and the USB volumes it mounted.
+- **Load times.** The HDD loads a level about twice as fast as the best USB setup. The PS2's USB is
+  1.1, at best about 0.9 MB/s, so a faster stick doesn't help; what helps is fewer USB commands.
+  Format the stick FAT32 with **32 KB clusters or larger**: the FAT driver reads at most one
+  cluster per command, and each command costs about 5 ms on top of its transfer. macOS picks 8 KB
+  for a 16 GB stick, and Disk Utility can't change it; `sudo newfs_msdos -F 32 -c 64 -v NAME
+  /dev/rdiskNsM` can (it erases the volume: check the device with `diskutil list` first). Once
+  the drive is found, the boot raises fileXio's IOP read buffer from 16 to 64 KB
+  (`PS2_QUAKE_FILEXIO_BUFFER_KB` in [iop_boot.cpp](src/ps2/system/iop_boot.cpp)): it reads one
+  buffer at a time, so on the HDD it sets the transfer size. On the Quake II port's console that
+  and the bigger clusters took a level's load from 58.6 to 40.4 s over USB; the HDD took 15.8 s.
 - **A log on the drive.** A console run has no stdout anyone can read: `ps2_logfile 1` (in
   `id1/autoexec.cfg`, or at the console) writes `quake.log` next to `id1/`. See
   [Debugging commands](#debugging-commands).
@@ -261,6 +271,16 @@ level loading path prints `[load +<ms> ms]` lines: the plaque going up and down,
 sounds, `R_NewMap`, each signon and the first 3D view after the load. Every file read is traced
 with its size and read time. A heartbeat a second shows the signon while a level comes up. "+ms" is
 the time since the previous trace line, so a step's duration is on the line that ends it.
+
+**I/O log.** A build with `-DPS2_QUAKE_IO_LOG=1` in `CONFIG_DEFS` (it ships 0; clear
+`build/<config>/src` first, since make doesn't track flags) records what each load under the
+loading plaque read: a line per file with its time in the file calls and its bytes, and a summary
+with the files, the megabytes, the time in file calls against the whole load, and the fileXio
+buffer size ([io_log.h](src/ps2/debug/io_log.h)). The lines stay in RAM until the load ends and
+then go to stdout and `id1/io_log.txt` in one write, so they don't slow the load they time, as
+the load trace's lines do with the log file on. It is how a console's load times are compared:
+build it as a release, and load from the menu or by a level change. The console says
+`I/O log: load N (maps/...) written to <path>` as each load ends.
 
 **Render pipeline hangs.** In debug builds every wait on the GS
 ([cmd_buffer.cpp](src/ps2/renderer/cmd_buffer.cpp)) gives up after about a second, dumps the

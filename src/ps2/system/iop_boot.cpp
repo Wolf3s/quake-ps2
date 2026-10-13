@@ -522,6 +522,23 @@ constexpr int kUsbWaitStepMsec  = 100;
 // data falls back to the reset, which gives the game's own drivers the whole wait above.
 constexpr int kUsbWaitRunningMsec = 2000;
 
+// fileXio serves a read in pieces the size of its IOP buffer, each one a device read and a DMA
+// to the EE, waited out before the next (fileXio_iop.c). Its default of 16 KB makes every PFS
+// read reach the drive as 16 KB transfers. 64 KB is the most usbmass_bd asks of a drive in one
+// SCSI command (128 sectors). FatFs also ends each read at a cluster's end, so on USB a larger
+// buffer only pays on a volume with clusters over 16 KB. Pass -DPS2_QUAKE_FILEXIO_BUFFER_KB=16
+// for the stock size, to compare.
+#ifndef PS2_QUAKE_FILEXIO_BUFFER_KB
+#define PS2_QUAKE_FILEXIO_BUFFER_KB 64
+#endif
+constexpr int kStockFileXioBufferBytes = 16 * 1024;
+constexpr int kFileXioBufferBytes      = PS2_QUAKE_FILEXIO_BUFFER_KB * 1024;
+static_assert(kFileXioBufferBytes >= kStockFileXioBufferBytes && kFileXioBufferBytes <= 256 * 1024,
+              "PS2_QUAKE_FILEXIO_BUFFER_KB must be 16 to 256");
+
+// See FileXioBufferBytes().
+static int s_fileXioBufferBytes = 0;
+
 bool CanOpen(const char * path)
 {
     std::FILE * file = std::fopen(path, "rb");
@@ -1228,6 +1245,33 @@ const char * FindHddGameData(const char * preferredPartition, const char * folde
     return nullptr;
 }
 
+// Gives fileXio its larger read buffer, once the drive's own modules have taken their IOP memory.
+void SetFileXioBuffer()
+{
+    s_fileXioBufferBytes = kStockFileXioBufferBytes;
+    if (kFileXioBufferBytes == kStockFileXioBufferBytes)
+    {
+        return;
+    }
+
+    const int result = fileXioSetRWBufferSize(kFileXioBufferBytes);
+    if (result == 0)
+    {
+        s_fileXioBufferBytes = kFileXioBufferBytes;
+        std::printf("IOP boot: fileXio read buffer %d KB.\n", kFileXioBufferBytes / 1024);
+        return;
+    }
+
+    // fileXio frees its old buffer before allocating the new one, and keeps a null one when that
+    // fails, which every read would then DMA from: put the stock size back.
+    std::printf("IOP boot: no IOP memory for a %d KB fileXio read buffer (%d); keeping %d KB.\n",
+                kFileXioBufferBytes / 1024, result, kStockFileXioBufferBytes / 1024);
+    if (fileXioSetRWBufferSize(kStockFileXioBufferBytes) != 0)
+    {
+        Sys_Error("IOP boot: fileXio has no read buffer left");
+    }
+}
+
 // Crude millisecond wait; fine for boot-time polling.
 void BusyWaitMsec(int msec)
 {
@@ -1283,6 +1327,7 @@ const char * BringUpStorage(const char * preferredPartition, const bool afterRes
     }
     if (hddBasePath != nullptr)
     {
+        SetFileXioBuffer();
         return hddBasePath;
     }
 
@@ -1322,6 +1367,7 @@ const char * BringUpStorage(const char * preferredPartition, const bool afterRes
         {
             ReportLine("USB: game data after %d ms of waiting for the drive%s.", waited,
                        usbhdfsd ? ", through the launcher's usbhdfsd" : "");
+            SetFileXioBuffer();
             return basePath;
         }
         BusyWaitMsec(kUsbWaitStepMsec);
@@ -1483,6 +1529,11 @@ int SyncGameDataDevice()
     // PFS caches inode/directory metadata after close with our read/write mount.
     // Host and USB need no sync RPC, including after an unsuccessful HDD probe.
     return (s_hddSyncDevice != nullptr) ? fileXioSync(s_hddSyncDevice, 0) : 0;
+}
+
+int FileXioBufferBytes()
+{
+    return s_fileXioBufferBytes;
 }
 
 bool StartPadDriver()
