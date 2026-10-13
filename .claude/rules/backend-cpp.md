@@ -26,6 +26,16 @@ paths:
   `VID_Init`.
 - Allocation goes through `ps2::heap` with a `MemTag`. Failure is a fatal `Sys_Error`, not an
   exception.
+- Fixed-size records allocated as levels load come from a `SmallPool` (`small_pool.h`), not the
+  heap: the textures, texmgr's `gltexture_t` records, the alias models' draw headers. Running out
+  is a `Sys_Error` naming the constant to bump. Size one from its `PeakCount()`, which the map
+  cycle prints for each pool.
+- `Sys_Error` runs once and never returns, and the code says so: a branch into it is
+  `[[unlikely]]` (`if (...) [[unlikely]]`, `[[unlikely]] default:`), and a function that only
+  runs on the way out is `Q_COLD_FUNC` (`Sys_Error` and `Sys_Quit` themselves), and
+  `[[noreturn]]` too when it ends in `Sys_Error` (`ReportPipelineHang`).
+- A word two threads share is `volatile`, written by one of them only, not a `std::atomic`
+  (audio.md says why).
 - `alignas(N)` is the alignment idiom, not `__attribute__((aligned))`.
 
 ## Naming (Quake-flavoured; backend only, not vclpp/parse-utils)
