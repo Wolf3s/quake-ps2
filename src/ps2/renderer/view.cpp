@@ -1205,6 +1205,16 @@ void RenderView()
         DrawTextureChains(stream, *cl.worldmodel, nullptr, chain_world, s_viewProj);
     }
 
+    // Hand the sky and the world to the GS now, rather than with the rest of the frame at
+    // EndFrame: they are the bulk of the frame's GS work, and the GS would otherwise sit idle
+    // while the EE builds the entities, the water, the particles and the 2D, then the EE would
+    // wait while it drew. On the Quake II port's console runs that was the heaviest views' cost,
+    // EE and GS back to back, and this kick took them from 56.7 to 59.9 fps under NTSC (quake2-ps2
+    // d0b53b4). It doesn't wait: the previous frame was fenced at BeginFrame, and the kick is
+    // skipped if anything else is still in flight.
+    rs::Submit(stream);
+    rs::KickBuilt();
+
     DrawEntitiesOnList(stream, false);
 
     if (r_drawworld.value != 0.0f)

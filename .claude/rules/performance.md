@@ -94,6 +94,14 @@ paths:
   overflowing 620 → 90 (overflows 742 → 139), dropped steady frames 26 → 19, GsWait mean 11 → 6
   µs, every other column within noise. The overflows left are the heaviest views, e2m3's
   teleporter exit above all (frames building up to 2.2 MB).
+- **A deliberate kick after the world pass (2026-10-13, from quake2-ps2 d0b53b4):**
+  `rs::KickBuilt` in `view.cpp`'s `RenderView` sends the sky and the world while the EE builds
+  the entities, the water, the particles and the 2D. It never waits mid-frame: it's skipped
+  while anything is in flight. *(Q2)* On a PAL console forced to NTSC it took the perf test from
+  56.7 to 59.9 fps over gameplay, dropped frames from 5.8% to 0.4%, and GsWait from 5.3 to 3.4
+  ms a frame. PCSX2 charges the GS nothing, so here it shows only its cost: over the map pass
+  (`q1-kick.*` against `q1-chain.*`) two kicks a frame instead of one, DmaSend + DmaFlush ~11 µs
+  more a frame, dropped frames unchanged (19).
 - The rest of this section is the Quake II port's *(Q2)*. Reference
   `build/baselines/vwep.flog`: EE work mean 5.4 ms, p99 9.3 ms, max 11.6 ms (debug), 0 dropped
   frames.

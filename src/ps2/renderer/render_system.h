@@ -145,8 +145,15 @@ void EndFrame(bool deferPresent);
 // Full sync/drain of the underlying cmdbuf. Kicks what has been recorded and waits for it.
 void KickAndWait();
 
+// Sends what this frame has built so far, without waiting for it to be drawn, so the GS starts
+// on it while the EE builds the rest. Skipped when an earlier kick is still in flight, because
+// sending would first wait for that one: this never waits mid-frame. Must be called between
+// draws, where no stream holds a claim on the chain. See view.cpp's RenderView for why it is there.
+void KickBuilt();
+
 // Whether a frame is open, between BeginFrame and EndFrame: what is recorded so far may reference
-// any texture's pixels, and the GS may still be drawing what of it has been sent (an overflow).
+// any texture's pixels, and the GS may still be drawing what of it has been sent (KickBuilt, an
+// overflow).
 bool IsFrameOpen();
 
 // Waits out the frame EndFrame left drawing, if it did, and shows it; then returns the drawing

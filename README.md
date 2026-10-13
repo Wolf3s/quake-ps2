@@ -208,9 +208,10 @@ implements those directly, with no GL underneath. All of it draws but fog, which
   through a CLUT, built once as the GS comes up.
 - **Command buffer.** A frame is one DMA chain to VIF1, built in a 1.5 MB block of two 768 KB
   halves, so one can fill while the other draws. 3D batches go to the VU1 microprograms, and 2D
-  goes straight to the GS. A frame that outgrows its half kicks what it has built and carries on
-  in the other half, which that kick has already waited out, so the GS draws the first part while
-  the EE builds the rest.
+  goes straight to the GS. The sky and the world are kicked as soon as they are built, so the GS
+  draws them while the EE builds the entities, the water, the particles and the 2D. A frame that
+  outgrows its half kicks what it has built and carries on in the other half, which that kick has
+  already waited out, so the GS draws the first part while the EE builds the rest.
 - **2D** ([draw.cpp](src/ps2/renderer/draw.cpp)), in place of QuakeSpasm's `gl_draw.c`: console
   text, pics, fills, the tiled border, and QuakeSpasm's canvases, each of whose
   `glOrtho`/`glViewport` pairs becomes a scale and an offset. WAD pics under 64x64 share two
