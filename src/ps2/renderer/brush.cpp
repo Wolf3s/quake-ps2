@@ -190,7 +190,9 @@ void CutTurbulentSurface(const qmodel_t & model, const msurface_t & surf, Emit &
 
 // The vertices of a turbulent surface's cells, each fanned into triangles, with raw texel
 // coordinates as gl_warp.c's SubdividePolygon gave them - the texture's axes without its offset, as
-// QuakeSpasm maps its water: the VU1 warp bends them and divides by the texture's size itself.
+// QuakeSpasm maps its water: the VU1 warp bends them, divides by the texture's size itself and
+// brings the result near zero by whole repeats (WarpCorners in textured_triangles.vcl). Unlike a
+// wall's, these can't be rebased here: the ripple's phase is a function of the raw coordinate.
 // Unlit water has no lightmap UVs to carry.
 void BakeTurbulentSurface(const qmodel_t & model, const msurface_t & surf, vu1::DrawVertex * out)
 {

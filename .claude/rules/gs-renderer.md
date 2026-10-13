@@ -118,6 +118,12 @@ the world, the entity passes, the glows), `brush.cpp` (per-surface draw data, bu
   `brush.cpp`'s `BakeSurfacePolygon` does the same (`ps2_st_rebase`, 2026-10-13). Under REPEAT
   it samples the same texels, mip levels included. Anything new that sends large S/T is a
   candidate for the same artifacts.
+- **Water had the same problem, and the loader can't shift it.** It arrives in raw texels, and
+  the ripple's phase is a function of them. *(Q2)* On a console its texture wobbled as the camera
+  turned, most visibly on the triangles the camera stood in (2026-10-11). So VU1 shifts the
+  *output* by whole repeats, per triangle, after the warp (`WarpCorners` in
+  textured_triangles.vcl); confirmed on hardware there. This port runs the same program
+  (2026-10-13).
 - **Skins and sprite frames are copied with their rows padded to 16 texels**, as draw.cpp's
   pics are: the upload sends `w*h` texels in whole quadwords, and 16 of the 61 shareware models
   have a `w*h` that isn't a multiple of 16 (308x149, 300x194, ...). The padding repeats each
