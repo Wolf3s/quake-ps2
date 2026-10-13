@@ -115,6 +115,13 @@ Both configs strip the ELF that runs; the symbols stay next to it in `quake_unst
 the one to feed `addr2line` or `build/tools/symbolize`. `make compiledb` regenerates
 `compile_commands.json` for IntelliSense/clangd, and `make clean` removes all build output.
 
+To cut a release, [make_github_release.sh](src/tools/scripts/make_github_release.sh)
+`[-f] [version]` runs `make clean`, `make` and `make release`, then packages both ELFs with an
+`id1/` holding the committed `config.cfg` and an empty `music/` into `github_rel_<version>/`, one
+folder and one zip per config (`q1ps2_<config>_<version>`). The player adds the paks. `version`
+defaults to the one the game reports, QuakeSpasm's (`QUAKESPASM_VERSION`, `_VER_PATCH` and
+`_VER_SUFFIX` in `src/quake/quakedef.h`).
+
 ### Running in PCSX2
 
 `make run` symlinks `build/<config>/id1` to the repo's `id1/` and launches
@@ -139,6 +146,10 @@ The engine's console output is prefixed with `[Q1]` in the log:
 ```sh
 tail -f ~/Library/Application\ Support/PCSX2/logs/emulog.txt | grep '\[Q1\]'
 ```
+
+Keep the ELF's full path under 152 characters: PCSX2 hands it to the BIOS as `host:<path>`, and a
+longer one crashes the BIOS's loader before the game starts, with no output but a run of
+`TLB Miss` lines. A release unzipped deep in a folder tree can get there.
 
 `make run RUN_ARGS="-heapsize 20480"` puts arguments on the game's command line (PCSX2's
 `-gameargs`). `+commands` there do nothing with the shareware data: like id's Quake,
@@ -586,7 +597,8 @@ src/
     builtin/            images compiled into the ELF (the QUAKE plaque, the palette), from imgdump
   tools/
     host/               host-side command line tools (unpak, imgdump, musenc)
-    scripts/            Python helpers (symbolize, compile_commands.json, frame logs)
+    scripts/            Python helpers (symbolize, compile_commands.json, frame logs, the USB
+                        image) and make_github_release.sh
     vclpp/              VCL preprocessor for the VU microprograms (git submodule)
     vu-checker/         openvcl/dvp-as output checks run by every VU build (git submodule)
     miniz/              deflate codec for the save games (git submodule)

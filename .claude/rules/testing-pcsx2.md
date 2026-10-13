@@ -13,6 +13,12 @@
   ASCII (the separator bar as `-----`).
 - **Edit PCSX2.ini only while PCSX2 is closed.** It rewrites the file on exit.
 - Every launch overwrites `emulog.txt`. Copy it out before the next launch if you need it.
+- **An ELF path of 152 characters or more never reaches `main()`.** PCSX2 passes it to the BIOS
+  as `host:<absolute path>`, and from 152 characters (that string's length) the BIOS's loader
+  faults right after `# Restart Without Memory Clear Done.`: `TLB Miss, pc=0x80005558 addr=0x0`,
+  then a run of them at `pc=0x0`. 151 boots (US BIOS v02.00, 2026-10-14). Scratch directories
+  under the session scratchpad sit close to it: keep their names short. Not the `_request_end`
+  flake below, which comes later, inside the game's file I/O.
 - PCSX2 memory card slot 1: `~/Library/Application Support/PCSX2/memcards/Mcd001.ps2`.
   `Slot1_Enable = false` in the ini simulates "no card".
 - `[USB1] Type = hidkbd` attaches a host-passthrough USB keyboard. It reports itself as JIS,
