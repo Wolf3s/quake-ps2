@@ -410,7 +410,8 @@ void GLSLGamma_GammaCorrect() {}
 // text on a dark band, a few pixels up so a TV's overscan leaves it. The client draws nothing while
 // the plaque is up, so no later frame would put this one on screen: it is shown before returning,
 // whatever ps2_gs_latency says. Neither the view nor the status bar goes in, as the client's state
-// is being torn down and rebuilt under them; behind the plaque is r_clearcolor.
+// is being torn down and rebuilt under them; behind the plaque is the console background's copper
+// brown.
 bool ps2::loading::DrawLoadingScreen(const char * status)
 {
     if (ps2::rs::IsFrameOpen())
@@ -421,7 +422,14 @@ bool ps2::loading::DrawLoadingScreen(const char * status)
     ps2::rs::BeginFrame(/*dither=*/s_enableDither.value != 0.0f);
     ps2::tex::ReleaseRetiredTextures();
 
+    // The most common colour in gfx/conback.lmp, (47, 23, 11), rather than r_clearcolor's grey,
+    // which is the 3D view's.
+    constexpr int kBackgroundColour = 97;
+
     GL_Set2D();
+    GL_SetCanvas(CANVAS_DEFAULT);
+    Draw_Fill(0, 0, glwidth, glheight, kBackgroundColour, 1.0f);
+
     GL_SetCanvas(CANVAS_MENU);
     qpic_t * const pic = Draw_CachePic("gfx/loading.lmp");
     Draw_Pic((320 - pic->width) / 2, (240 - 48 - pic->height) / 2, pic);

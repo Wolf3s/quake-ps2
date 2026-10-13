@@ -265,8 +265,8 @@ close is followed by a `fileXioSync` of the mounted partition. On the Quake II p
 cost about 23 ms a line over USB, so a load timed with the log on mostly measures the log. A write
 that fails turns logging off, with a warning on stdout.
 
-**Loading screen.** While the loading plaque is up, the screen shows the plaque with a status bar
-along the bottom naming the file being read, and the files, megabytes and seconds so far. It is
+**Loading screen.** While the loading plaque is up, the screen shows the plaque, on the console
+background's copper brown, with a status bar along the bottom naming the file being read, and the files, megabytes and seconds so far. It is
 redrawn at most every 200 ms, and as soon as a file of 256 KB or more starts. Each frame of it is
 shown before its draw returns
 ([loading_screen.cpp](src/ps2/renderer/loading_screen.cpp)): with `ps2_gs_latency` on, the plaque
