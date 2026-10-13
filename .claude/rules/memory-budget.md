@@ -93,6 +93,17 @@ Measure with `ps2_memstats` and `hunk_print` before raising any of them.
   run met). The heap peaked at 26.16 MB: **3.20 MB of RAM** stayed outside dlmalloc's arena,
   and 3.35 MB was free inside it (3.10 MB of that the top chunk). The log is
   `build/baselines/q1-mapcycle-registered.emulog.txt`.
+- **After the quake2-ps2 sync (2026-10-13)**, the same 38 maps on the debug build, from the
+  tracked `config.cfg`: all loaded clean in 5.9 minutes. The heap's worst moment rose from 26.16
+  to **26.72 MB**, still at e3m2. Most of the 0.56 MB is the frame chain's halves going from 512
+  to 768 KB (+512 KB), and ELF + system went from 3.58 to 3.65 MB (the boot code, the log file's
+  24 KB of buffers, the debug tools). The music's buffers had shrunk from 128 to 16 KB in
+  between. Hunk and cache peaked at 13.80 MB as before, and the least hunk left is still 2.20 MB
+  (e4m7). At the end 4.0 MB of RAM stayed outside dlmalloc's arena and 2.09 MB was free inside
+  it (1.72 MB of that the top chunk): 6.09 MB free in all, against 6.55. Where the free space
+  lands moves between runs; the peak is the number to compare. The log is
+  `build/baselines/q1-mapcycle-sync.emulog.txt`. The 64 KB fileXio read buffer is IOP memory
+  (ps2-platform.md), and PAL's 512 lines cost VRAM, not RAM (gs-renderer.md).
 - **The hunk stays 16 MB:** every level fits with room to spare, but the cache fills whatever
   the levels leave. A smaller hunk would trade that room for models and sounds evicted and read
   back mid-level (`Mod_Extradata`, `S_LoadSound`), a hitch each.
