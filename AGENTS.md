@@ -21,8 +21,10 @@ lists every backend cvar. Add new ones there, with their debug/release defaults 
 
 The port was brought up in phases: compile, headless boot, game data, 2D, input, 3D, then sound,
 music and saves. All of them have landed, and every file in `src/quake` and `src/ps2` is built, or
-included by one that is. What is left is refinement: performance (moving the engine's time from
-double to float where the profile probes point) and real hardware. GS fog was left out on purpose:
+included by one that is. It plays on a real PS2: loading from USB and the HDD, saves on the memory
+card, rumble and the CD music from ripped tracks all work there, and in PCSX2 from `host:`. What is
+left is refinement: performance (moving the engine's time from double to float where the profile
+probes point). GS fog was left out on purpose:
 none of id's maps sets it, so it stays a future exercise for custom maps.
 
 - **Unused files are deleted, not parked.** Whatever a change makes unused goes with it. The
