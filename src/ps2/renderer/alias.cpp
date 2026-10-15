@@ -54,7 +54,7 @@ extern cvar_t r_lerpmodels, r_lerpmove, gl_fullbrights;
 // ------------------------------------------------------------------------------------------------
 
 cvar_t r_drawviewmodel      = ps2::MakeCvar("r_drawviewmodel",      "1", CVAR_NONE);
-cvar_t r_shadows            = ps2::MakeCvar("r_shadows",            "0", CVAR_ARCHIVE);
+cvar_t r_shadows            = ps2::MakeCvar("r_shadows",            "1", CVAR_ARCHIVE);
 cvar_t gl_overbright_models = ps2::MakeCvar("gl_overbright_models", "1", CVAR_ARCHIVE);
 cvar_t gl_nocolors          = ps2::MakeCvar("gl_nocolors",          "0", CVAR_NONE);
 

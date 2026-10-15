@@ -18,7 +18,7 @@ functional and playable single-player Quake on the PS2, built entirely with free
 QuakeSpasm's C code under [src/quake/](src/quake/) is kept as close to untouched as possible; every change
 is tagged `// [PS2_QUAKE]: <why>`. Everything specific to the console lives in [src/ps2/](src/ps2/) and is
 written in modern C++ (C++20, no exceptions, no RTTI, warnings-as-errors). That backend comes from the
-Quake II port: its renderer, input, audio, memory and debugging code carry over, ported to
+[Quake II port][link_q2_ps2]: its renderer, input, audio, memory and debugging code carry over, ported to
 QuakeSpasm's interfaces.
 
 ### Status
@@ -206,9 +206,10 @@ either drive's speed, so its load times say nothing about a console's.
 | `menu_debug` | Opens the debug page. |
 
 **The debug page** (Options → Debug Options) puts the debugging aids on the gamepad, for a console
-with no keyboard: the log file, the IOP report, the save list, a dump of the console's text, a
-screenshot, and in the builds that have them, the tests below. While the console is down, L2 and R2
-scroll it.
+with no keyboard: the Quake console itself (no pad button opens it; Start closes it in a game), the
+log file, the IOP report, the save list, a dump of the console's text, a screenshot, god mode and
+all the weapons (`impulse 9`) in a single player game, and in the builds that have them, the tests
+below. While the console is down, L2 and R2 scroll it.
 
 **The log file.** `ps2_logfile 1` copies everything the console prints to `quake.log`, with a
 timestamp per line, starting from the boot report. It also catches the reports printed on the way
@@ -242,6 +243,10 @@ those directly on the PS2's hardware, with no GL underneath.
 - **The world** ([view.cpp](src/ps2/renderer/view.cpp)) keeps QuakeSpasm's visibility code and draws
   in its passes: textures, then the lightmaps, then the fullbright texels. Water, slime and lava
   warp on VU1, and the sky ([sky.cpp](src/ps2/renderer/sky.cpp)) scrolls its two layers.
+  Dynamic lights (muzzle flashes, rockets, explosions) rebuild the lightmaps they reach, as in
+  QuakeSpasm, or with `ps2_dynamic_lights vertex` VU1 adds the four nearest the camera at each
+  vertex of the lightmap pass, which costs the EE nothing but washes the walls a flat grey rather
+  than brightening their texture. `gl_flashblend` draws QuakeSpasm's glows in their place.
 - **Models** ([alias.cpp](src/ps2/renderer/alias.cpp)) are interpolated between poses on VU1 and lit
   as QuakeSpasm lights them, with their shadows (`r_shadows`) and the players' colours.
   [Sprites](src/ps2/renderer/sprite.cpp) face the camera in all of QuakeSpasm's orientations, and
@@ -250,8 +255,10 @@ those directly on the PS2's hardware, with no GL underneath.
   drawn at twice their size (`scr_menuscale`), filling the 640x448 screen as the original filled
   320x200.
 - **Video Options** (in the Options menu): NTSC or PAL, a 16- or 32-bit framebuffer (16-bit leaves
-  more VRAM for textures), dithering, the GS latency, and the FPS counter and debug overlays.
-  The first two apply after a restart.
+  more VRAM for textures), the texture filtering, dithering, the dynamic lights (lightmaps, vertex
+  or glows), the models' shadows, the GS latency, and the FPS counter and debug overlays.
+  The first two apply after a restart. The Options page itself has the save device, host files
+  or the memory card, when running from `host:`.
 - **The boot splash** shows the QUAKE plaque from the menus, built into the ELF, from the first
   moment of the boot until the game draws its first frame. **The loading screen** shows the loading
   plaque with a status line naming the file being read.

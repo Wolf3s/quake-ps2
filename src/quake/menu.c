@@ -971,8 +971,8 @@ again:
 enum
 {
 	OPT_CUSTOMIZE = 0,
-	OPT_CONSOLE,	// 1
-	OPT_DEFAULTS,	// 2
+	// [PS2_QUAKE]: no OPT_CONSOLE ("Goto console"): the debug page's "Open console" row does it
+	OPT_DEFAULTS,	// 1
 	OPT_SCALE,
 	OPT_SCRSIZE,
 	OPT_GAMMA,
@@ -990,6 +990,7 @@ enum
 //#ifdef _WIN32
 //	OPT_USEMOUSE,
 //#endif
+	OPT_PS2SAVEDEVICE, // [PS2_QUAKE]: where saves go, host files or the memory card
 	OPT_PS2DEBUG, // [PS2_QUAKE]: the backend's debugging aids, on the gamepad
 	OPT_VIDEO,	// This is the last before OPTIONS_ITEMS
 	OPTIONS_ITEMS
@@ -1128,6 +1129,10 @@ void M_AdjustSliders (int dir)
 	case OPT_LOOKSTRAFE:	// lookstrafe
 		Cvar_Set ("lookstrafe", lookstrafe.value ? "0" : "1");
 		break;
+
+	case OPT_PS2SAVEDEVICE: // [PS2_QUAKE]
+		PS2_SaveDeviceToggle ();
+		break;
 	}
 }
 
@@ -1176,8 +1181,6 @@ void M_Options_Draw (void)
 	// Draw the items in the order of the enum defined above:
 	// OPT_CUSTOMIZE:
 	M_Print (16, 32,			"              Controls");
-	// OPT_CONSOLE:
-	M_Print (16, 32 + 8*OPT_CONSOLE,	"          Goto console");
 	// OPT_DEFAULTS:
 	M_Print (16, 32 + 8*OPT_DEFAULTS,	"          Reset config");
 
@@ -1251,6 +1254,10 @@ void M_Options_Draw (void)
 	M_Print (16, 32 + 8*OPT_LOOKSTRAFE,	"            Lookstrafe");
 	M_DrawCheckbox (220, 32 + 8*OPT_LOOKSTRAFE, lookstrafe.value);
 
+	// OPT_PS2SAVEDEVICE: [PS2_QUAKE]
+	M_Print (16, 32 + 8*OPT_PS2SAVEDEVICE,	"           Save Device");
+	M_Print (220, 32 + 8*OPT_PS2SAVEDEVICE, PS2_SaveDeviceName ());
+
 	// OPT_PS2DEBUG: [PS2_QUAKE]
 	M_Print (16, 32 + 8*OPT_PS2DEBUG,	"         Debug Options");
 
@@ -1284,10 +1291,6 @@ void M_Options_Key (int k)
 		{
 		case OPT_CUSTOMIZE:
 			M_Menu_Keys_f ();
-			break;
-		case OPT_CONSOLE:
-			m_state = m_none;
-			Con_ToggleConsole_f ();
 			break;
 		case OPT_DEFAULTS:
 			if (SCR_ModalMessage("This will reset all controls\n"

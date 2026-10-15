@@ -115,6 +115,12 @@ char * PS2_SaveLoadText(const char * path);
 // be read.
 qboolean PS2_SaveReadComment(const char * path, char * comment, int size);
 
+// The options menu's Save Device row: where saves go now ("host files" or "memory card"), and a
+// step to the other. Only a run from host: has a choice (ps2_savedevice); on a console saves
+// always go to the card, and the step does nothing.
+const char * PS2_SaveDeviceName(void);
+void PS2_SaveDeviceToggle(void);
+
 // ------------------------------------------------------------------------------------------------
 // config.cfg (host.c, cmd.c)
 // ------------------------------------------------------------------------------------------------

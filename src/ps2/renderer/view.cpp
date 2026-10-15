@@ -11,7 +11,8 @@
  *    - diffuse: the texture, at the modulate identity;
  *    - lightmap: the same triangles again through the atlas UVs, multiplying the framebuffer by
  *      the luxel (Modulate, Cd * As / 128, overbright up to nearly 2x) - QuakeSpasm's 2x
- *      modulate pass with gl_overbright;
+ *      modulate pass with gl_overbright. With ps2_dynamic_lights "vertex", VU1 adds the dynamic
+ *      lights over it per vertex (ModulateAdd), and the lightmaps no longer rebuild for them;
  *    - fullbright: the texels 224-255 of the textures that have them, added over the lit result
  *      (Additive) - its gl_fullbrights glow pass.
  *
@@ -140,6 +141,27 @@ static cvar_t s_mipFilter = ps2::MakeCvar("ps2_mip_filter", "bilinear", CVAR_ARC
 static cvar_t s_mipBias   = ps2::MakeCvar("ps2_mip_bias",   "0",        CVAR_ARCHIVE);
 
 static gs::MipFilter s_mipFilterMode = gs::MipFilter::Bilinear;
+
+// How the walls take the dynamic lights while gl_flashblend is 0, by name: "lightmaps" rebuilds the
+// luxels they reach, as QuakeSpasm does, and "vertex" leaves the lightmaps alone and has VU1 add
+// the four lights nearest the camera at each vertex of the lightmap pass, as the Quake II port's
+// ps2_dynamic_lightmaps 2 did. ps2_dlight_scale sets how bright those are: a light adds its radius
+// times the scale at its centre (in GS colour, 128 the texture's own), falling to nothing at the
+// radius. The lightmaps add about the radius, in luxels, over the texture instead of beside it.
+static cvar_t s_dynamicLights = ps2::MakeCvar("ps2_dynamic_lights", "lightmaps", CVAR_ARCHIVE);
+static cvar_t s_dlightScale   = ps2::MakeCvar("ps2_dlight_scale",   "0.15",      CVAR_ARCHIVE);
+
+enum class DlightMode : u8
+{
+    Lightmaps,
+    Vertex,
+};
+
+static DlightMode s_dlightMode = DlightMode::Lightmaps;
+
+// The frame's lights for the vertex mode, in world space, nearest the camera first (SetupView).
+static vu1::DynamicLight s_frameLights[vu1::kMaxDynamicLights] = {};
+static int s_numFrameLights = 0;
 
 // ------------------------------------------------------------------------------------------------
 // Culling (gl_rmain.c's R_CullBox, R_CullModelForEntity; r_world.c's R_BackFaceCull)
@@ -328,6 +350,138 @@ void MipFilterChanged(cvar_t * var)
     const char * const current = kFilterNames[static_cast<int>(s_mipFilterMode)];
     Con_Printf("ps2_mip_filter: '%s' is not nearest, bilinear or trilinear; keeping %s.\n", var->string, current);
     Cvar_SetQuick(var, current);
+}
+
+// ps2_dynamic_lights' callback: takes the new name, or puts the old one back.
+void DynamicLightsChanged(cvar_t * var)
+{
+    static const char * const kModeNames[] = { "lightmaps", "vertex" };
+    for (int i = 0; i < ps2::ArrayLength(kModeNames); ++i)
+    {
+        if (q_strcasecmp(var->string, kModeNames[i]) == 0)
+        {
+            s_dlightMode = static_cast<DlightMode>(i);
+            return;
+        }
+    }
+
+    const char * const current = kModeNames[static_cast<int>(s_dlightMode)];
+    Con_Printf("ps2_dynamic_lights: '%s' is not lightmaps or vertex; keeping %s.\n", var->string, current);
+    Cvar_SetQuick(var, current);
+}
+
+// ------------------------------------------------------------------------------------------------
+// Dynamic lights on the walls
+// ------------------------------------------------------------------------------------------------
+
+// Whether the dynamic lights rebuild the lightmaps they reach this frame, or VU1 lights the
+// lightmap pass's vertices with them. Neither with gl_flashblend, whose glows stand in for both
+// (RenderDlights); r_dynamic 0 turns the vertex lights off as it holds the lightmaps' rebuilds.
+Q_ALWAYS_INLINE bool LightmapDlights()
+{
+    return gl_flashblend.value == 0.0f && s_dlightMode == DlightMode::Lightmaps;
+}
+
+Q_ALWAYS_INLINE bool VertexDlights()
+{
+    return gl_flashblend.value == 0.0f && r_dynamic.value != 0.0f && s_dlightMode == DlightMode::Vertex;
+}
+
+// Picks the frame's four lights for the vertex mode: of those alive, the ones whose reach comes
+// nearest the camera, so a firefight in front of it isn't lit by rockets across the map. QuakeSpasm
+// keeps 64 lights where VU1 sums four, but a fight rarely runs more than a few.
+void ChooseFrameLights()
+{
+    s_numFrameLights = 0;
+    if (!VertexDlights())
+    {
+        return;
+    }
+
+    float gaps[vu1::kMaxDynamicLights] = {};
+    const float now   = static_cast<float>(cl.time);
+    const float scale = s_dlightScale.value;
+
+    for (int k = 0; k < MAX_DLIGHTS; ++k)
+    {
+        const dlight_t & l = cl_dlights[k];
+        // QuakeSpasm's luxels take a light only where it adds more than its minlight.
+        const float radius = l.radius - l.minlight;
+        if (l.die < now || radius <= 0.0f)
+        {
+            continue;
+        }
+
+        vec3_t d;
+        VectorSubtract(l.origin, r_origin, d);
+        const float gap = std::sqrt(DotProduct(d, d)) - radius;
+
+        // Insertion into the four-deep list, the farthest dropped off the end.
+        int slot = s_numFrameLights;
+        while (slot > 0 && gaps[slot - 1] > gap)
+        {
+            if (slot < vu1::kMaxDynamicLights)
+            {
+                gaps[slot]          = gaps[slot - 1];
+                s_frameLights[slot] = s_frameLights[slot - 1];
+            }
+            --slot;
+        }
+        if (slot < vu1::kMaxDynamicLights)
+        {
+            // SetDynamicLights takes the colour 0..1 and scales it to the GS's 255: the radius
+            // times the scale at the centre, as the luxels take about the radius.
+            const float bright = (l.radius * scale) / 255.0f;
+            gaps[slot] = gap;
+            s_frameLights[slot] = {
+                { l.origin[0], l.origin[1], l.origin[2] },
+                { l.color[0] * bright, l.color[1] * bright, l.color[2] * bright },
+                radius
+            };
+            if (s_numFrameLights < vu1::kMaxDynamicLights)
+            {
+                ++s_numFrameLights;
+            }
+        }
+    }
+}
+
+// Hands VU1 the frame's lights in the space of the model about to draw: the microprogram lights
+// the vertices as they come, before the transform, so a brush entity's lights go into its own
+// space. 'model' is its model to world matrix (EntityMatrix), null for the world. Its rows are the
+// rotation scaled by s, so a point comes back by the dot with each row over s squared.
+void SetUpDynamicLights(const math::Mat4 * model)
+{
+    if (s_numFrameLights == 0)
+    {
+        return;
+    }
+    if (model == nullptr)
+    {
+        rs::SetDynamicLights(s_frameLights, s_numFrameLights);
+        return;
+    }
+
+    const math::Mat4 & m = *model;
+    const float scaleSqr = (m.m[0][0] * m.m[0][0]) + (m.m[0][1] * m.m[0][1]) + (m.m[0][2] * m.m[0][2]);
+    const float invScaleSqr = 1.0f / scaleSqr;
+    const float invScale = std::sqrt(invScaleSqr);
+
+    vu1::DynamicLight local[vu1::kMaxDynamicLights];
+    for (int i = 0; i < s_numFrameLights; ++i)
+    {
+        const vu1::DynamicLight & l = s_frameLights[i];
+        const float dx = l.origin.x - m.m[3][0];
+        const float dy = l.origin.y - m.m[3][1];
+        const float dz = l.origin.z - m.m[3][2];
+
+        local[i] = l;
+        local[i].origin = { ((dx * m.m[0][0]) + (dy * m.m[0][1]) + (dz * m.m[0][2])) * invScaleSqr,
+                            ((dx * m.m[1][0]) + (dy * m.m[1][1]) + (dz * m.m[1][2])) * invScaleSqr,
+                            ((dx * m.m[2][0]) + (dy * m.m[2][1]) + (dz * m.m[2][2])) * invScaleSqr };
+        local[i].radius = l.radius * invScale;
+    }
+    rs::SetDynamicLights(local, s_numFrameLights);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -672,8 +826,12 @@ void DrawTextureChains(rs::TriangleStream & stream, qmodel_t & model, const enti
     {
         PS2_PROFILE_SCOPED_EVENT(prof_evt::LmChains);
 
+        // The vertex mode's lights ride this pass, as on the Quake II port: the modulate leaves the
+        // vertex colour spare, VU1 fills it with the lights' sum, and the blend adds that over what
+        // the luxels modulate (ModulateAdd).
+        const bool lit = (s_numFrameLights != 0);
         stream.SetTransform(mvp);
-        stream.SetDrawFlags(rs::DrawFlags::Modulate);
+        stream.SetDrawFlags(lit ? (rs::DrawFlags::Modulate | rs::DrawFlags::DynamicLights) : rs::DrawFlags::Modulate);
 
         const int numAtlases = lm::NumAtlases();
         for (int a = 0; a < numAtlases; ++a)
@@ -826,8 +984,8 @@ void DrawBrushModel(rs::TriangleStream & stream, entity_t & e)
     }
 
     // Dynamic lights on the model's own surfaces, unless it is an instanced model (the ammo boxes,
-    // whose surfaces every copy shares).
-    if (model.firstmodelsurface != 0 && gl_flashblend.value == 0.0f)
+    // whose surfaces every copy shares). The vertex mode lights those too, sharing nothing.
+    if (model.firstmodelsurface != 0 && LightmapDlights())
     {
         // The lights' die times are float, so they're tested against the clock as a float: against
         // the double cl.time, every test was a soft-float call, 64 per brush model drawn.
@@ -845,7 +1003,8 @@ void DrawBrushModel(rs::TriangleStream & stream, entity_t & e)
     // gl_rmain.c's R_RotateForEntity with the pitch flipped going in: R_DrawBrushModel's "stupid
     // quake bug", which brush models carry and alias models do not.
     const vec3_t angles = { -e.angles[PITCH], e.angles[YAW], e.angles[ROLL] };
-    const math::Mat4 mvp = EntityMatrix(e.origin, angles, e.scale) * s_viewProj;
+    const math::Mat4 toWorld = EntityMatrix(e.origin, angles, e.scale);
+    const math::Mat4 mvp = toWorld * s_viewProj;
 
     ClearTextureChains(model, chain_model);
 
@@ -866,6 +1025,7 @@ void DrawBrushModel(rs::TriangleStream & stream, entity_t & e)
     }
 
     // Its sky surfaces went with the world's, ahead of everything (sky::Draw).
+    SetUpDynamicLights(&toWorld);
     DrawTextureChains(stream, model, &e, chain_model, mvp);
     DrawWaterChains(stream, model, &e, chain_model, mvp);
 }
@@ -1042,12 +1202,17 @@ void RenderDlights(rs::TriangleStream & stream)
 
 void SetupView()
 {
-    // Before the surfaces are marked, which rebuilds the lightmaps they touch.
-    R_PushDlights();
+    // Before the surfaces are marked, which rebuilds the lightmaps they touch. The vertex mode
+    // marks none: the lights go to VU1 instead, and a surface lit last frame rebuilds without them.
+    if (LightmapDlights())
+    {
+        R_PushDlights();
+    }
     R_AnimateLight();
     ++r_framecount;
 
     VectorCopy(r_refdef.vieworg, r_origin);
+    ChooseFrameLights();
     AngleVectors(r_refdef.viewangles, vpn, vright, vup);
 
     r_oldviewleaf = r_viewleaf;
@@ -1132,6 +1297,9 @@ void Init()
     Cvar_RegisterVariable(&s_mipFilter);
     Cvar_RegisterVariable(&s_mipBias);
     Cvar_SetCallback(&s_mipFilter, MipFilterChanged);
+    Cvar_RegisterVariable(&s_dynamicLights);
+    Cvar_RegisterVariable(&s_dlightScale);
+    Cvar_SetCallback(&s_dynamicLights, DynamicLightsChanged);
 
     Cvar_SetCallback(&r_wateralpha, SetWaterAlpha);
     Cvar_SetCallback(&r_lavaalpha,  SetLavaAlpha);
@@ -1206,6 +1374,7 @@ void RenderView()
     if (r_drawworld.value != 0.0f)
     {
         PS2_PROFILE_SCOPED_EVENT(prof_evt::World);
+        SetUpDynamicLights(nullptr);
         DrawTextureChains(stream, *cl.worldmodel, nullptr, chain_world, s_viewProj);
     }
 
@@ -1275,6 +1444,16 @@ bool FullbrightMode()
 bool LightmapMode()
 {
     return s_lightmapMode;
+}
+
+cvar_t & MipFilterCvar()
+{
+    return s_mipFilter;
+}
+
+cvar_t & DynamicLightsCvar()
+{
+    return s_dynamicLights;
 }
 
 } // namespace ps2::view

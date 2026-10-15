@@ -22,6 +22,7 @@
 #include "ps2/renderer/loading_screen.h"
 #include "ps2/renderer/overlays.h"
 #include "ps2/renderer/profile.h"
+#include "ps2/renderer/view.h"
 #include "ps2/tests/draw_cube.h"
 #include "ps2/save/save_system.h"
 #include "ps2/tests/map_cycle.h"
@@ -81,8 +82,9 @@ void ReadInitCvars()
 // QuakeSpasm's video module draws Options' "Video Options" page itself, through the vid_menu*fn
 // hooks menu.c calls (gl_vidsdl.c's has the PC's modes). This one has the PS2's, laid out as
 // QuakeSpasm's Options page is: the TV standard and the framebuffer format, which apply on the next
-// boot, then the dithering, the GS latency, the FPS counter and the debug panels, which apply at
-// once. Each row steps its cvar through its values with left, right or Enter.
+// boot, then the texture filtering, the dithering, the dynamic lights, the models' shadows, the GS
+// latency, the FPS counter and the debug panels, which apply at once. Each row steps its cvar
+// through its values with left, right or Enter.
 
 struct VideoRow
 {
@@ -92,6 +94,11 @@ struct VideoRow
     const char * const * values; // what the row sets the cvar to, in order
     const char * const * names;  // what it shows for each; null for an off/on checkbox
     int                  count;
+
+    // A row over more than one cvar reads and sets its values through these instead; null for
+    // the rest.
+    int  (*getIndex)();
+    void (*setIndex)(int index);
 };
 
 constexpr const char * kVideoModes[]     = { "auto", "ntsc", "pal" };
@@ -99,29 +106,61 @@ constexpr const char * kVideoModeNames[] = { "auto", "NTSC", "PAL" };
 constexpr const char * kFbFormats[]      = { "1", "0" };
 constexpr const char * kFbFormatNames[]  = { "16-bit", "32-bit" };
 constexpr const char * kOffOn[]          = { "0", "1" };
+constexpr const char * kMipFilters[]     = { "nearest", "bilinear", "trilinear" };
+constexpr const char * kDlightModeNames[] = { "lightmaps", "vertex", "glows" };
+
+// The dynamic lights row spans two cvars: gl_flashblend's glows stand in for the walls' lighting
+// whichever way ps2_dynamic_lights says they take it, so picking the glows sets the one and leaves
+// the other as it was.
+int DynamicLightsIndex()
+{
+    if (gl_flashblend.value != 0.0f)
+    {
+        return 2;
+    }
+    return (q_strcasecmp(ps2::view::DynamicLightsCvar().string, "vertex") == 0) ? 1 : 0;
+}
+
+void SetDynamicLightsIndex(const int index)
+{
+    Cvar_Set(gl_flashblend.name, (index == 2) ? "1" : "0");
+    if (index != 2)
+    {
+        Cvar_Set(ps2::view::DynamicLightsCvar().name, (index == 1) ? "vertex" : "lightmaps");
+    }
+}
 
 const VideoRow kVideoRows[] = {
-    { "Video mode",     "auto is the console's own; on restart",   &s_videoMode,                         kVideoModes, kVideoModeNames, 3 },
-    { "Color depth",    "16-bit leaves more VRAM; on restart",     &s_fb16Bit,                           kFbFormats,  kFbFormatNames,  2 },
-    { "Dithering",      "hides 16-bit color banding",              &s_enableDither,                      kOffOn,      nullptr,         2 },
-    { "GS latency",     "a frame ahead: faster, one frame of lag", &s_gsLatency,                         kOffOn,      nullptr,         2 },
-    { "Show FPS",       "frames per second, at the top right",     &ps2::overlay::FpsCounterCvar(),      kOffOn,      nullptr,         2 },
-    { "Debug overlays", "memory, VRAM and profiling panels",       &ps2::overlay::DebugOverlaysCvar(),   kOffOn,      nullptr,         2 },
+    { "Video mode",     "auto is the console's own; on restart",   &s_videoMode,                         kVideoModes, kVideoModeNames,  3, nullptr,            nullptr },
+    { "Color depth",    "16-bit leaves more VRAM; on restart",     &s_fb16Bit,                           kFbFormats,  kFbFormatNames,   2, nullptr,            nullptr },
+    { "Texture filter", "trilinear blends mip levels too",         &ps2::view::MipFilterCvar(),          kMipFilters, kMipFilters,      3, nullptr,            nullptr },
+    { "Dithering",      "hides 16-bit color banding",              &s_enableDither,                      kOffOn,      nullptr,          2, nullptr,            nullptr },
+    { "Dynamic lights", "vertex: on VU1, no lightmap rebuilds",    nullptr,                              nullptr,     kDlightModeNames, 3, DynamicLightsIndex, SetDynamicLightsIndex },
+    { "Model shadows",  "a shadow on the ground under each model", &r_shadows,                           kOffOn,      nullptr,          2, nullptr,            nullptr },
+    { "GS latency",     "a frame ahead: faster, one frame of lag", &s_gsLatency,                         kOffOn,      nullptr,          2, nullptr,            nullptr },
+    { "Show FPS",       "frames per second, at the top right",     &ps2::overlay::FpsCounterCvar(),      kOffOn,      nullptr,          2, nullptr,            nullptr },
+    { "Debug overlays", "memory, VRAM and profiling panels",       &ps2::overlay::DebugOverlaysCvar(),   kOffOn,      nullptr,          2, nullptr,            nullptr },
 };
 
 constexpr int kNumVideoRows = ps2::ArrayLength(kVideoRows);
 
 static int s_videoCursor = 0;
 
-// Which of its values the row's cvar holds now: by name for the video mode, and for the rest,
-// whose values are "0" and "1", by whether the cvar reads 0. One the row doesn't list reads as the
-// first.
+// Which of its values the row's cvar holds now: by name for the rows whose values are names, and
+// for the rest, whose values are "0" and "1", by whether the cvar reads 0. One the row doesn't list
+// reads as the first.
 int VideoRowIndex(const VideoRow & row)
 {
+    if (row.getIndex != nullptr)
+    {
+        return row.getIndex();
+    }
+
+    const bool byName = (row.values[0][0] < '0' || row.values[0][0] > '9');
     for (int i = 0; i < row.count; ++i)
     {
-        const bool match = (row.cvar == &s_videoMode) ? (q_strcasecmp(row.cvar->string, row.values[i]) == 0)
-                                                      : ((row.cvar->value != 0.0f) == (row.values[i][0] != '0'));
+        const bool match = byName ? (q_strcasecmp(row.cvar->string, row.values[i]) == 0)
+                                  : ((row.cvar->value != 0.0f) == (row.values[i][0] != '0'));
         if (match)
         {
             return i;
@@ -185,7 +224,14 @@ void StepVideoRow(const int step)
 {
     const VideoRow & row = kVideoRows[s_videoCursor];
     const int next = (VideoRowIndex(row) + step + row.count) % row.count;
-    Cvar_Set(row.cvar->name, row.values[next]);
+    if (row.setIndex != nullptr)
+    {
+        row.setIndex(next);
+    }
+    else
+    {
+        Cvar_Set(row.cvar->name, row.values[next]);
+    }
 }
 
 void VideoMenuKey(const int key)

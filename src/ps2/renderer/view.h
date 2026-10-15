@@ -48,4 +48,9 @@ math::Mat4 EntityMatrix(const vec3_t origin, const vec3_t angles, u8 scale);
 bool FullbrightMode();
 bool LightmapMode();
 
+// The walls' texture filtering (ps2_mip_filter) and how they take the dynamic lights
+// (ps2_dynamic_lights), for the Video Options page's rows (vid.cpp).
+cvar_t & MipFilterCvar();
+cvar_t & DynamicLightsCvar();
+
 } // namespace ps2::view

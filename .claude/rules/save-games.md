@@ -26,7 +26,8 @@ facts behind them:
   `PS2_SaveLoadText` in `Host_Loadgame_f`, `PS2_SaveReadComment` in `M_ScanSaves`. The hooks
   print the "Saving game to"/"Loading game from" lines, so they name the card. `PS2_Config*`
   in `Host_WriteConfiguration` and `Cmd_Exec_f`. `M_Options_Key` writes the config on leaving
-  the options menu.
+  the options menu. The Options page's Save Device row reads `PS2_SaveDeviceName` and steps
+  with `PS2_SaveDeviceToggle`, which does nothing off `host:`.
 - The menus probe the card once per frame (`host_framecount`): `M_ScanSaves` reads twenty
   slots in a row, and a missing card would otherwise print its error twenty times.
 - miniz is the `src/tools/miniz` submodule (pinned 3.1.2), compiled `-O3` in both configs.

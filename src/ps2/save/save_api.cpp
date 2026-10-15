@@ -448,6 +448,19 @@ qboolean PS2_SaveReadComment(const char * path, char * comment, const int size)
 // PS2_Config* - config.cfg (engine_hooks.h)
 // ------------------------------------------------------------------------------------------------
 
+const char * PS2_SaveDeviceName(void)
+{
+    return SavesToCard() ? "memory card" : "host files";
+}
+
+void PS2_SaveDeviceToggle(void)
+{
+    if (HostFilesAvailable())
+    {
+        Cvar_Set(s_saveDevice.name, SavesToCard() ? "host" : "mc");
+    }
+}
+
 FILE * PS2_ConfigOpenWrite(void)
 {
     std::free(s_configText); // From a write a Host_Error cut short.
