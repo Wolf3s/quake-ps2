@@ -77,6 +77,10 @@ skyboxes or other external textures.
        music/     (optional: the soundtrack, see below)
    ```
 
+   **The shareware data** is freely available: the [Quake Official Archive][link_quake_archive] has
+   id's shareware releases, and `pak0.pak` is in the v1.06 one. The port has been tested with that
+   v1.06 shareware data and with the full game's data from a CD rip.
+
    **The soundtrack** is optional. Rip the Quake CD's audio tracks 2-11 to 16-bit WAVs named
    `id1/music/trackNN.wav` (NN = the CD track number), at 44.1 or 22.05 kHz, then run `make music`
    to encode them into the `trackNN.adp` files the game streams (the PS2's native ADPCM, about
@@ -369,3 +373,4 @@ accompanying LICENSE file for details.
 [link_id_repo]: https://github.com/id-Software/Quake
 [link_q2_ps2]: https://github.com/glampert/quake2-ps2
 [link_ps2_dev]: https://github.com/ps2dev
+[link_quake_archive]: https://github.com/Jason2Brownlee/QuakeOfficialArchive
