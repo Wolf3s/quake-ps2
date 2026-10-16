@@ -6,7 +6,9 @@
 #
 #   q1ps2_<config>_<version>/
 #     quake.elf
-#     quake_unstripped.elf
+#     quake_unstripped.elf  only with -u
+#     LICENSE               the GPL, which the binaries must ship with
+#     RELEASE_NOTES.txt     misc/RELEASE_NOTES.txt, @VERSION@ and @COMMIT@ filled in
 #     id1/
 #       config.cfg      the committed default (HEAD), not the working copy
 #       music/          empty, for the player's trackNN.adp files
@@ -18,11 +20,12 @@ set -euo pipefail
 
 usage() {
     cat <<EOF
-Usage: $(basename "$0") [-f] [version]
+Usage: $(basename "$0") [-f] [-u] [version]
 
   version   Release version. Defaults to the one the game reports, QuakeSpasm's
             (QUAKESPASM_VERSION, _VER_PATCH and _VER_SUFFIX in src/quake/quakedef.h).
   -f        Replace an existing github_rel_<version>/ folder.
+  -u        Also package quake_unstripped.elf (the symbols, for addr2line).
 EOF
 }
 
@@ -35,10 +38,12 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$repo_root"
 
 force=0
+unstripped=0
 version=""
 for arg in "$@"; do
     case "$arg" in
         -f|--force) force=1 ;;
+        -u|--unstripped) unstripped=1 ;;
         -h|--help)  usage; exit 0 ;;
         -*)         usage >&2; die "unknown option '$arg'" ;;
         *)
@@ -66,9 +71,17 @@ if [ -e "$out_dir" ] && [ "$force" -eq 0 ]; then
     die "$out_dir already exists; remove it or pass -f to replace it"
 fi
 
+release_notes="misc/RELEASE_NOTES.txt"
+for file in LICENSE "$release_notes"; do
+    [ -f "$file" ] || die "$file is missing"
+done
+
+commit="$(git rev-parse HEAD)"
+
 # Not fatal: a release cut from uncommitted changes is sometimes intended.
 if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
-    echo "warning: uncommitted changes in tracked files; the ELFs are built from the working tree." >&2
+    echo "warning: uncommitted changes in tracked files; the ELFs are built from the working tree," \
+         "not from commit $commit that the release notes point to." >&2
 fi
 if ! git diff --quiet HEAD -- id1/config.cfg; then
     echo "warning: id1/config.cfg differs from HEAD; the packages ship the committed one." >&2
@@ -81,8 +94,11 @@ make || die "debug build failed"
 echo "==> make release"
 make release || die "release build failed"
 
+elfs=(quake.elf)
+[ "$unstripped" -eq 0 ] || elfs+=(quake_unstripped.elf)
+
 for config in debug release; do
-    for elf in quake.elf quake_unstripped.elf; do
+    for elf in "${elfs[@]}"; do
         [ -f "build/$config/$elf" ] || die "build/$config/$elf is missing after the build"
     done
 done
@@ -97,7 +113,11 @@ for config in debug release; do
 
     echo "==> packaging $name"
     mkdir -p "$pkg/id1/music"
-    cp "build/$config/quake.elf" "build/$config/quake_unstripped.elf" "$pkg/"
+    for elf in "${elfs[@]}"; do
+        cp "build/$config/$elf" "$pkg/"
+    done
+    cp LICENSE "$pkg/"
+    sed -e "s/@VERSION@/$version/g" -e "s/@COMMIT@/$commit/g" "$release_notes" > "$pkg/RELEASE_NOTES.txt"
     git show HEAD:id1/config.cfg > "$pkg/id1/config.cfg"
 
     (cd "$out_dir" && zip -r -9 -q "$name.zip" "$name" -x "*.DS_Store" -x "__MACOSX/*")

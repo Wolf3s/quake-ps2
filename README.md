@@ -114,9 +114,11 @@ Both configs strip the ELF that runs and keep the symbols next to it in `quake_u
 `make compiledb` regenerates `compile_commands.json` for clangd, and `make clean` removes all
 build output.
 
-[make_github_release.sh](src/tools/scripts/make_github_release.sh) `[-f] [version]` cuts a release:
-a clean build of both configs, each packaged with an `id1/` holding the default `config.cfg` and an
-empty `music/` folder, zipped into `github_rel_<version>/`. The player adds the paks.
+[make_github_release.sh](src/tools/scripts/make_github_release.sh) `[-f] [-u] [version]` cuts a
+release: a clean build of both configs, each config's `quake.elf` packaged with `LICENSE`,
+[RELEASE_NOTES.txt](misc/RELEASE_NOTES.txt) (its `@VERSION@` and `@COMMIT@` filled in, so it points
+to the exact source) and an `id1/` holding the default `config.cfg` and an empty `music/` folder,
+zipped into `github_rel_<version>/`. `-u` adds `quake_unstripped.elf`. The player adds the paks.
 
 ### Running in PCSX2
 
@@ -367,7 +369,12 @@ src/
   QuakeSpasm is itself based on John Fitzgibbons' FitzQuake.
 - id Software's Quake, released under the GPL in 1999 ([source][link_id_repo]; the original release
   notes are in [src/README.md](src/README.md)).
-- The PS2 backend under [src/ps2/](src/ps2/) comes from the [Quake II port][link_q2_ps2].
+- The PS2 backend under [src/ps2/](src/ps2/) comes from the [Quake II PS2 port][link_q2_ps2].
+
+This project also includes or utilizes other Open Source libraries:
+- [miniz](https://github.com/richgel999/miniz)
+- [dlmalloc](https://gee.cs.oswego.edu/dl/html/malloc.html)
+- [ps2sdk](https://github.com/ps2dev/ps2sdk)
 
 ---
 
