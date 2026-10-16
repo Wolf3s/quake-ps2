@@ -29,11 +29,11 @@ the shareware episode or all four episodes of the registered game, with everythi
 - **Loading** the game data from a USB drive or the internal HDD on a console, and from PCSX2's
   host filesystem (`host:`) in the emulator.
 - **Saving** games and settings to the memory card.
-- **The DualShock 2**, with both analog sticks and rumble. A USB keyboard works too, for the console.
+- **The DualShock 2**, with both analog sticks and rumble. A USB keyboard works too, for the in-game console.
 - **Sound effects and the CD soundtrack**, the music streamed from ripped CD tracks.
 - **Everything on screen:** textured, lightmapped worlds with their fullbright texels, warping
   water and scrolling skies, monsters, items and the view weapon, sprites, particles, and the
-  console, menus and status bar.
+  in-game console, menus and status bar.
 - **NTSC and PAL**, at 60 or 50 Hz.
 
 What is left is refinement, mostly performance: a few of the heaviest views still drop below
@@ -80,7 +80,7 @@ skyboxes or other external textures.
    ```
 
    **The shareware data** is freely available: the [Quake Official Archive][link_quake_archive] has
-   id's shareware releases, and `pak0.pak` is in the v1.06 one. The port has been tested with that
+   id's shareware releases, and `pak0.pak` is in the v1.06 one. This port has been tested with that
    v1.06 shareware data and with the full game's data from a CD rip.
 
    **The soundtrack** is optional. Rip the Quake CD's audio tracks 2-11 to 16-bit WAVs named
