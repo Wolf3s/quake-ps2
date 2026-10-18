@@ -98,9 +98,10 @@ skyboxes or other external textures.
    each `id1/pakN.pak` into a `pakN.pkz` beside it, a zip of the same files, most of them deflated:
    pak0 from 17.8 MB to 8.2 MB, pak1 from 32.7 MB to 14.9 MB. The game loads a `pakN.pkz` in place
    of the `pakN.pak` with its number, so a console's drive needs only the `.pkz` files, and a level
-   load reads half the bytes off it ([Compressed packs](#compressed-packs)). In PCSX2 they load
-   about as fast as the paks (a release build went from e1m1 to e1m2 in 1.50 s from them, 1.60 s
-   from the paks), so the repository's `id1/` can hold either.
+   load reads half the bytes off it ([Compressed packs](#compressed-packs)). In PCSX2, where reading
+   costs next to nothing and inflating doesn't, the paks load faster (a release build went from
+   e1m1 to e1m2 in 1.23 s from them, 1.50 s from the `.pkz`): keep the `.pkz` files out of the
+   repository's `id1/` for emulator work, unless they are what you are testing.
 
 ### Building
 

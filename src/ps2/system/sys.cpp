@@ -459,6 +459,13 @@ int Sys_FileOpenRead(const char * path, int * hndl)
     }
     ps2::iolog::LooseFile();
 
+    // Unbuffered. Every read through these handles is a whole file (COM_LoadFile, from a pak or
+    // loose) or a pak's header and directory, which a buffer only cuts up: this newlib is built
+    // without HAVE_BLKSIZE, so stdio buffers BUFSIZ, 1 KB, and a 1.3 MB map took 1,300 round trips
+    // to the IOP's file server. Unbuffered, a pak file is one seek and one read, straight into its
+    // memory.
+    std::setvbuf(file, nullptr, _IONBF, 0);
+
     s_fileHandles[handle] = file;
     *hndl = handle;
     return static_cast<int>(FileLength(file));
