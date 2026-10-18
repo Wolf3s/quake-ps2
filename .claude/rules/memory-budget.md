@@ -113,6 +113,16 @@ Measure with `ps2_memstats` and `hunk_print` before raising any of them.
   26.72 to **26.81 MB** (at e3m2 `TexImage` held 40 KB less and `AliasMdl` 2 KB less, against
   133 KB of pools), with the hunk and every other tag as before, and 5.99 MB free at the end. The
   log is `build/baselines/q1-mapcycle-pools.emulog.txt`.
+- **Compressed packs (2026-10-18):** the map cycle over the 38 levels from `pak0.pkz` +
+  `pak1.pkz`, against the paks, on the same debug build and config: all load, and every read from
+  a pkz checked its CRC. Tag `Pack` holds 58 KB throughout: the two packs' tables (17.8 KB: each
+  file's offsets and sizes, its CRC in debug builds, and 1,443 restart points) and the 40.2 KB
+  workspace that whole-file reads share, made by the first. A stream of a deflated file holds
+  72.2 KB more while it is open (a 32 KB dictionary, a 32 KB input buffer, the 8 KB inflater):
+  the attract demo, still open during the first level's load, took that load's `Pack` to 130 KB.
+  Every load peak rose by 0.05-0.06 MB, and the run's worst moment from 26.83 to 26.89 MB (e3m2);
+  the hunk, the cache and the pools didn't move. A release build's tables are 1.7 KB smaller
+  (no CRCs). The logs are `build/baselines/q1-mapcycle-pkz.emulog.txt` and `-pak.emulog.txt`.
 - **The hunk stays 16 MB:** every level fits with room to spare, but the cache fills whatever
   the levels leave. A smaller hunk would trade that room for models and sounds evicted and read
   back mid-level (`Mod_Extradata`, `S_LoadSound`), a hitch each.

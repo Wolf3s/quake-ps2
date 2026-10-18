@@ -2,11 +2,14 @@
 /* ================================================================================================
  * File: sys.h
  * Brief: The backend's side of the system layer: its clock, read off the EE system timer (T2),
- *        and the backend's own console commands. QuakeSpasm's Sys_* seam, implemented in
- *        sys.cpp alongside these, is declared by QuakeSpasm's sys.h.
+ *        the backend's own console commands, and its way into the engine's file handles.
+ *        QuakeSpasm's Sys_* seam, implemented in sys.cpp alongside these, is declared by
+ *        QuakeSpasm's sys.h.
  *
  * This source code is released under the GNU GPL v2 license.
  * ================================================================================================ */
+
+#include <cstdio>
 
 namespace ps2::sys {
 
@@ -23,5 +26,10 @@ double Seconds();
 // new commands once Host_Init has finished. VID_Init, the first backend seam Host_Init calls
 // after its command system is up, is the caller.
 void RegisterCommands();
+
+// Gives a stream the backend opened a slot among the engine's file handles, as Sys_FileOpenRead
+// gives a file it opens: Sys_FileRead, Sys_FileSeek and Sys_FileClose take it like any other.
+// For the files of a compressed pack (fs/pkz_pack.cpp), which COM_OpenFile hands out as handles.
+int OpenFileHandle(std::FILE * file);
 
 } // namespace ps2::sys

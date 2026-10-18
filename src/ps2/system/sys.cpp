@@ -304,6 +304,17 @@ long FileLength(std::FILE * file)
 
 } // namespace
 
+namespace ps2::sys {
+
+int OpenFileHandle(std::FILE * file)
+{
+    const int handle = FindFileHandle();
+    s_fileHandles[handle] = file;
+    return handle;
+}
+
+} // namespace ps2::sys
+
 extern "C" {
 
 // ------------------------------------------------------------------------------------------------

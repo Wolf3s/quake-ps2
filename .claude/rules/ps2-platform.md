@@ -61,6 +61,12 @@ paths:
   written back over the DMA'd bytes. A plain `static char[128]` only gets 8-byte alignment.
   Check with `mips64r5900el-ps2-elf-nm build/debug/quake_unstripped.elf | grep <sym>`.
   `SyncDCache(buf, buf + size)` before the transfer is the matching half.
+- **A file read needs no aligned buffer.** fileXio's `fileXioRead` (USB, HDD) and the ROM
+  FILEIO's `fioRead` (`host:`) write the buffer's lines back, DMA only the whole cache lines,
+  and copy the unaligned head and tail in their completion callback (`rests` in fileXio_rpc.c,
+  `_fio_read_intr` in fileio.c). So `read()` and `fread()` may target any EE memory: the
+  compressed packs read a stored file straight into the engine's buffer (fs/pkz_pack.cpp). Only
+  their own input buffers are `alignas(64)`, which spares those copies.
 - **`dma_channel_send_chain` writes back only the tag buffer** (`data` to `data + qwc`), never
   the data its REF tags point at. Anything the CPU wrote and a chain REFs needs its own
   `SyncDCache` first, or the DMAC reads stale RAM. PCSX2 has no data cache, so only a console

@@ -27,7 +27,8 @@ QuakeSpasm's interfaces.
 the shareware episode or all four episodes of the registered game, with everything working:
 
 - **Loading** the game data from a USB drive or the internal HDD on a console, and from PCSX2's
-  host filesystem (`host:`) in the emulator.
+  host filesystem (`host:`) in the emulator, from id's paks or from compressed ones that halve what
+  a level load reads.
 - **Saving** games and settings to the memory card.
 - **The DualShock 2**, with both analog sticks and rumble. A USB keyboard works too, for the in-game console.
 - **Sound effects and the CD soundtrack**, the music streamed from ripped CD tracks.
@@ -79,6 +80,7 @@ skyboxes or other external textures.
      id1/
        pak0.pak
        pak1.pak   (registered game only)
+       pak0.pkz   (optional, with pak1.pkz: compressed packs, see below)
        music/     (optional: the soundtrack, see below)
    ```
 
@@ -92,13 +94,21 @@ skyboxes or other external textures.
    1.5 MB a minute). Only the `.adp` files need to go onto the console's drive. A track with no
    `.adp` plays from its `.wav`, at a higher cost.
 
+   **Compressed packs** are optional as well, and worth making for a console. `make pkz` converts
+   each `id1/pakN.pak` into a `pakN.pkz` beside it, a zip of the same files, most of them deflated:
+   pak0 from 17.8 MB to 8.2 MB, pak1 from 32.7 MB to 14.9 MB. The game loads a `pakN.pkz` in place
+   of the `pakN.pak` with its number, so a console's drive needs only the `.pkz` files, and a level
+   load reads half the bytes off it ([Compressed packs](#compressed-packs)). In PCSX2 they load
+   about as fast as the paks (a release build went from e1m1 to e1m2 in 1.50 s from them, 1.60 s
+   from the paks), so the repository's `id1/` can hold either.
+
 ### Building
 
 Three dependencies are git submodules under [src/tools/](src/tools/):
 [vclpp](https://github.com/glampert/vclpp) (the VU microprogram preprocessor),
 [vu-checker](https://github.com/glampert/vu-checker) (checks on the VU toolchain's output) and
-[miniz](https://github.com/richgel999/miniz) (deflate, for the save games and `pakzip`). Clone with
-`--recursive`, or run `git submodule update --init --recursive` in an existing clone.
+[miniz](https://github.com/richgel999/miniz) (deflate, for the save games and the compressed packs).
+Clone with `--recursive`, or run `git submodule update --init --recursive` in an existing clone.
 
 ```sh
 make            # debug build   -> build/debug/quake.elf (+ host tools)
@@ -182,8 +192,8 @@ such as wLaunchELF:
 mass:/QUAKE/
   quake.elf
   id1/
-    pak0.pak
-    pak1.pak   (registered game only)
+    pak0.pkz   (or pak0.pak)
+    pak1.pkz   (or pak1.pak; registered game only)
     music/     (optional: the trackNN.adp files)
 ```
 
@@ -192,9 +202,11 @@ mass:/QUAKE/
   driver it needs is built into the ELF. If it finds nothing, the error screen lists where it
   looked.
 - **Load times.** The HDD loads a level about twice as fast as the best USB setup. The PS2's USB is 1.1, so a
-  faster stick doesn't help, but larger clusters do: format the stick FAT32 with **32 KB clusters
-  or larger** (macOS picks 8 KB for a 16 GB stick; `sudo newfs_msdos -F 32 -c 64 -v NAME
-  /dev/rdiskNsM` sets 32 KB, erasing the volume).
+  faster stick doesn't help, but fewer bytes and larger clusters do. Copy the `.pkz` packs rather
+  than the `.pak` ones: a load reads half the bytes (the Quake II port's loads over USB took 25-40%
+  less time from its `.pkz`, and about as long from the HDD). And format the stick FAT32 with
+  **32 KB clusters or larger** (macOS picks 8 KB for a 16 GB stick; `sudo newfs_msdos -F 32 -c 64
+  -v NAME /dev/rdiskNsM` sets 32 KB, erasing the volume).
 - **Saves and settings** go to the memory card in slot 1, never to the USB drive or the HDD.
 - **NTSC or PAL.** The game follows the console's own standard. Options → Video Options → Video
   mode forces one, after a restart, so a PAL console can run at 60 Hz on a TV that takes it.
@@ -250,7 +262,9 @@ stdout and the log, then stops with an error screen.
   `ps2_testmaps 2` turns a full circle at a few points on every level. The scripts in
   [src/tools/scripts/frame_log/](src/tools/scripts/frame_log/) summarize and compare the captures.
 - `PS2_QUAKE_LOAD_TRACE` ([load_trace.h](src/ps2/debug/load_trace.h)) traces each step of a level
-  load into the log, and `-DPS2_QUAKE_IO_LOG=1` records what each load read and how long it took.
+  load into the log, and `-DPS2_QUAKE_IO_LOG=1` ([io_log.h](src/ps2/debug/io_log.h)) records what each
+  load read and how long it took, and from a `.pkz` what came off the drive and how long it spent
+  inflating: the way to compare a `.pak` load with a `.pkz` one on a console.
 
 ---
 
@@ -333,6 +347,26 @@ or the `.wav` files directly. It behaves as QuakeSpasm's external music does: "E
 
 ---
 
+## Compressed packs
+
+QuakeSpasm's file system is kept as it is: its search path, its `pakN.pak` archives and its
+lookups ([common.c](src/quake/common.c)). For each `pakN.pak` it now looks for a `pakN.pkz` first,
+and loads that instead. A pkz is a standard zip ([pkz_format.h](src/ps2/fs/pkz_format.h)), written
+by `pakzip` (`make pkz`) with the pak's names in the pak's order, so any zip tool reads it
+(`unzip -t id1/pak0.pkz`), and the game loads one made by another tool as well. Each file is
+deflated, or stored if that saves less than 10% (a few sounds), since inflating costs the console
+time: the maps shrink to 45% of their size, the models to 39-47%, the 2D art to a quarter, the
+sounds to 71-87%. The format and the tool are the Quake II port's.
+
+[pkz_pack.cpp](src/ps2/fs/pkz_pack.cpp) inflates on the EE, with the miniz already linked for the
+save games. A file read whole, as every map, model, sound and texture is, inflates straight into
+the memory it is loaded to. A stream, which a demo is read through, inflates through a 32 KB window
+as it is read, and can seek: `pakzip` leaves a restart point every 32 KB, for 0.1% of the pack's
+size. Both packs' tables and the whole-file workspace take 58 KB (tag `Pack`), and an open stream
+of a deflated file 72 KB more. Debug builds also check the CRC of every file they read whole.
+
+---
+
 ## Save games
 
 Games are saved to the memory card in slot 1 ([save/](src/ps2/save/)), in a `Q1PS2` folder the PS2's
@@ -367,6 +401,7 @@ src/
     math/               vector/matrix math for the renderer
     net/                the network driver table (loopback only)
     save/               save games on the memory card
+    fs/                 compressed game packs (pakN.pkz) for QuakeSpasm's file system
     debug/              on-screen error printing, the log file, stack traces, EE exception handling
     tests/              standalone bring-up scenes and tests
     builtin/            images compiled into the ELF (the QUAKE plaque, the palette), from imgdump
@@ -376,7 +411,7 @@ src/
                         image) and make_github_release.sh
     vclpp/              VCL preprocessor for the VU microprograms (git submodule)
     vu-checker/         openvcl/dvp-as output checks run by every VU build (git submodule)
-    miniz/              deflate codec for the save games and pakzip (git submodule)
+    miniz/              deflate codec for the save games, the compressed packs and pakzip (git submodule)
     vscode_extensions/  VCL/VU assembly syntax highlighting for VSCode
 ```
 

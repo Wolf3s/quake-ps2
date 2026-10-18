@@ -121,6 +121,19 @@ timeout. The load trace's points, compiled out unless `PS2_QUAKE_LOAD_TRACE` is 
 QuakeSpasm's own `Con_DPrintf`s in `SV_SpawnServer` (sv_main.c), `CL_ParseServerInfo` (cl_parse.c)
 and `CL_SignonReply` (cl_main.c).
 
+For the compressed packs (`engine_hooks.h`, `ps2/fs/pkz_pack.cpp`): `common.c`'s
+`COM_AddGameDirectory` loads a `pakN.pkz` in place of `pakN.pak` (`COM_LoadPkzFile`),
+`COM_FindFile` opens a pkz's files with `PS2_PkzOpenHandle` and `PS2_PkzOpenStream`, and
+`COM_Game_f` closes one with `PS2_PkzClose`. `common.h`'s `pack_t` gains `pkz`: a pkz's `handle`
+is -1, and its `packfile_t.filepos` is a file's index, not an offset. The handle is a stream the
+backend put in `sys.cpp`'s table (`ps2::sys::OpenFileHandle`), which `COM_CloseFile` closes like a
+loose file's, as no pack has it. Every pkz stream starts at position 0, where a pak's starts at its
+file's offset in the pak: QuakeSpasm's `FS_*` readers take `ftell` at the open and seek relative
+to it, and the demo reader only reads on, so anything new that reads a `COM_FOpenFile` stream must
+do the same, and never seek past the file's end. `COM_LoadPkzFile` keeps only the file count of
+`COM_LoadPackFile`'s test for id's pak0: its CRC is of the pak's directory bytes, which a pkz
+doesn't keep, so a pkz of the shareware pak0 still plays as the shareware version.
+
 For rumble: `view.c` calls `PS2_RumbleDamage` from `V_ParseDamage` and `PS2_RumblePickup` from
 `V_BonusFlash_f`. For the memory reports: `zone.c` adds `Cache_UsedBytes` (the cache's list is
 private to it), which `ps2_testmaps` prints.

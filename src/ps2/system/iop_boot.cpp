@@ -466,8 +466,9 @@ void ReportModules()
 // Game data location
 // ------------------------------------------------------------------------------------------------
 
-// The file probed for under "<base>/id1/" to decide a base path works.
-constexpr const char * kProbeFile = "pak0.pak";
+// The files probed for under "<base>/id1/" to decide a base path works: the compressed pack the
+// game loads in preference (fs/pkz_pack.cpp), or id's.
+constexpr const char * kProbeFiles[] = { "pak0.pkz", "pak0.pak" };
 
 // PCSX2 builds have differed on whether "host:/" is ELF-relative or host-absolute,
 // so the explicitly relative form is tried too.
@@ -553,9 +554,16 @@ bool CanOpen(const char * path)
 // Probes exactly the path the Quake filesystem will build from the base ("<base>/id1/...").
 bool HasGameData(const char * basePath)
 {
-    char probePath[MAX_OSPATH];
-    std::snprintf(probePath, sizeof(probePath), "%s/id1/%s", basePath, kProbeFile);
-    return CanOpen(probePath);
+    for (const char * probeFile : kProbeFiles)
+    {
+        char probePath[MAX_OSPATH];
+        std::snprintf(probePath, sizeof(probePath), "%s/id1/%s", basePath, probeFile);
+        if (CanOpen(probePath))
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 // Retain the launch partition before the IOP reset discards the loader's PFS mount.
@@ -1503,13 +1511,13 @@ const char * DetectBasePathAndBootIop(const char * elfPath)
     Sys_Error("No game data found!\n"
               "Emulator: enable the host filesystem; id1/ goes by the ELF.\n"
               "HDD: id1/ goes by the ELF on an APA/PFS partition.\n"
-              "USB: put id1/ (%s etc) next to the ELF,\n"
+              "USB: put id1/ (%s or %s etc) next to the ELF,\n"
               "or at the root of a FAT32/exFAT drive.\n"
               "Launched as: %s\n"
               "Looked for: %s\n"
               "HDD: %s\n"
               "USB volumes mounted:%s",
-              kProbeFile, launchedAs, searched, s_hddStatus, (mountedVolumes[0] != '\0') ? mountedVolumes : " none");
+              kProbeFiles[1], kProbeFiles[0], launchedAs, searched, s_hddStatus, (mountedVolumes[0] != '\0') ? mountedVolumes : " none");
 }
 
 void PrintIopBootReport(void (*printer)(const char *, ...))

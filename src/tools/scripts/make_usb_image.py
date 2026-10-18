@@ -5,8 +5,10 @@
 #
 # Uses macOS hdiutil to make a writable, raw MBR/FAT32 image, rather than a CD ISO. Both ELF
 # configurations sit beside one id1 copy at the volume root. Only the stripped ELFs are copied.
-# Music includes only ADP tracks, and hidden files (macOS's .DS_Store) are left out. No build is
-# run by this script.
+# The game loads a compressed pakN.pkz in place of pakN.pak (ps2/fs/pkz_pack.cpp), so of a pair
+# only the pkz is copied, or only the pak with --uncompressed-paks, for comparing the two on a
+# console. Music includes only ADP tracks, and hidden files (macOS's .DS_Store) are left out. No
+# build is run by this script.
 #
 # This source code is released under the GNU GPL v2 license.
 # Check the accompanying LICENSE file for details.
@@ -18,7 +20,8 @@ Image layout:
     quake_debug.elf
     quake_release.elf
     id1/                      (working copy, including config.cfg and any autoexec.cfg;
-                               ADP music only)
+                               ADP music only; of a pakN.pak/pakN.pkz pair, the pkz unless
+                               --uncompressed-paks)
 
 Run `make` and `make release` first. In PCSX2, select this .img as the USB Mass Storage
 Device backing image, then launch either ELF from uLaunchELF. Exit PCSX2 before replacing
@@ -48,6 +51,8 @@ def ParseArgs(argv=None):
                         help="image size in MiB; default: payload plus free space, at least 256")
     parser.add_argument("-f", "--force", action="store_true",
                         help="replace an existing image after successful creation")
+    parser.add_argument("--uncompressed-paks", action="store_true",
+                        help="of a pakN.pak/pakN.pkz pair, copy the pak rather than the pkz")
     return parser.parse_args(argv)
 
 
@@ -63,12 +68,27 @@ def ValidateSources(repoRoot):
     return gameData
 
 
-def StageFiles(repoRoot, gameData, staging):
+def OmittedPacks(gameData, uncompressedPaks):
+    # The game loads pakN.pkz instead of pakN.pak when both are there, so one of a pair is dead
+    # weight: the pak by default, the pkz when the image is to load uncompressed.
+    omitted = []
+    for index in range(10):
+        pak = gameData / f"pak{index}.pak"
+        pkz = gameData / f"pak{index}.pkz"
+        if pak.is_file() and pkz.is_file():
+            omitted.append(pkz.name if uncompressedPaks else pak.name)
+    return omitted
+
+
+def StageFiles(repoRoot, gameData, staging, uncompressedPaks=False):
     musicDirectory = gameData / "music"
+    omittedPacks = OmittedPacks(gameData, uncompressedPaks)
 
     def IgnoreSourceFiles(directory, names):
         directory = Path(directory)
         ignored = [name for name in names if name.startswith(".")]
+        if directory == gameData:
+            ignored.extend(name for name in names if name in omittedPacks)
         if directory == musicDirectory or musicDirectory in directory.parents:
             ignored.extend(name for name in names
                            if not (directory / name).is_dir() and Path(name).suffix.lower() != ".adp")
@@ -78,6 +98,7 @@ def StageFiles(repoRoot, gameData, staging):
     for config in ("debug", "release"):
         source = repoRoot / "build" / config / "quake.elf"
         shutil.copy2(source, staging / f"quake_{config}.elf")
+    return omittedPacks
 
 
 def MeasurePayload(staging):
@@ -108,7 +129,7 @@ def ImageSizeMib(payloadBytes, entries, requestedSize):
     return ((desiredSize + 31) // 32) * 32
 
 
-def CreateImage(repoRoot, output, requestedSize=None, force=False):
+def CreateImage(repoRoot, output, requestedSize=None, force=False, uncompressedPaks=False):
     gameData = ValidateSources(repoRoot)
     # The image must not become part of the game-data copy on subsequent invocations.
     if output == gameData or gameData in output.parents:
@@ -130,7 +151,10 @@ def CreateImage(repoRoot, output, requestedSize=None, force=False):
     with tempfile.TemporaryDirectory(prefix=".quake-usb-", dir=output.parent) as temporary:
         working = Path(temporary)
         staging = working / "files"
-        StageFiles(repoRoot, gameData, staging)
+        omittedPacks = StageFiles(repoRoot, gameData, staging, uncompressedPaks)
+        for name in omittedPacks:
+            kept = name[:-4] + (".pak" if name.endswith(".pkz") else ".pkz")
+            print(f"Omitting id1/{name}: the image carries id1/{kept} instead.", flush=True)
         payloadBytes, entries = MeasurePayload(staging)
         sizeMib = ImageSizeMib(payloadBytes, entries, requestedSize)
         rawImage = working / "usb.cdr"
@@ -160,7 +184,7 @@ def Main(argv=None):
     # Resolve the parent only: --force replaces a destination symlink rather than its target.
     output = output.parent.resolve() / output.name
     try:
-        CreateImage(repoRoot, output, args.size_mib, args.force)
+        CreateImage(repoRoot, output, args.size_mib, args.force, args.uncompressed_paks)
     except subprocess.CalledProcessError as error:
         detail = (error.stderr or error.stdout or "no diagnostic output").strip()
         print(f"error: hdiutil failed (exit {error.returncode}): {detail}", file=sys.stderr)

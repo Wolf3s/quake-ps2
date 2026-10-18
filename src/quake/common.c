@@ -24,7 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 #include "q_ctype.h"
-#include "ps2/engine_hooks.h" // [PS2_QUAKE]: COM_FindFile names what it opens, for the frame log and the loading screen
+#include "ps2/engine_hooks.h" // [PS2_QUAKE]: COM_FindFile names what it opens, for the frame log and the loading screen; the compressed packs
 #include <errno.h>
 
 static char	*largv[MAX_NUM_ARGVS + 1];
@@ -1815,6 +1815,14 @@ static int COM_FindFile (const char *filename, int *handle, FILE **file,
 					PS2_FileOpening (filename);
 				if (path_id)
 					*path_id = search->path_id;
+				if (pak->pkz) // [PS2_QUAKE]: a compressed pack opens its files itself, at position 0
+				{
+					if (handle)
+						*handle = PS2_PkzOpenHandle (pak->pkz, pak->files[i].filepos, filename);
+					else if (file)
+						*file = PS2_PkzOpenStream (pak->pkz, pak->files[i].filepos, filename);
+					return com_filesize;
+				}
 				if (handle)
 				{
 					*handle = pak->handle;
@@ -2209,6 +2217,62 @@ static pack_t *COM_LoadPackFile (const char *packfile)
 
 /*
 =================
+COM_LoadPkzFile
+
+[PS2_QUAKE]: COM_LoadPackFile for a compressed pakN.pkz (ps2/engine_hooks.h), which reads its own
+directory. This builds the packfile_t list from it, so the lookups don't change, with each file's
+index in the pkz as its filepos.
+=================
+*/
+static void COM_AddPkzFile (void *context, int index, const char *name, int length)
+{
+	packfile_t	*file = (packfile_t *) context + index;
+
+	q_strlcpy (file->name, name, sizeof(file->name));
+	file->filepos = index;
+	file->filelen = length;
+}
+
+static pack_t *COM_LoadPkzFile (const char *packfile)
+{
+	ps2_pkz_t	*pkz;
+	pack_t		*pack;
+	int		numpackfiles;
+
+	pkz = PS2_PkzOpen (packfile);
+	if (!pkz)
+		return NULL;
+
+	numpackfiles = PS2_PkzNumFiles (pkz);
+	if (!numpackfiles)
+	{
+		Sys_Printf ("WARNING: %s has no files, ignored\n", packfile);
+		PS2_PkzClose (pkz);
+		return NULL;
+	}
+
+	// Of COM_LoadPackFile's test for id's own pak0 only the file count can be made: its CRC is
+	// of the pak's directory as stored, junk bytes after the names and file offsets included,
+	// which a pkz doesn't keep. So a pkz of id's pak0 still plays as the shareware version, and
+	// one whose count differs is a modified game, as its pak was.
+	if (numpackfiles != PAK0_COUNT)
+		com_modified = true;	// not the original file
+
+	pack = (pack_t *) Z_Malloc (sizeof (pack_t));
+	pack->files = (packfile_t *) Z_Malloc (numpackfiles * sizeof(packfile_t));
+	PS2_PkzListFiles (pkz, COM_AddPkzFile, pack->files);
+
+	q_strlcpy (pack->filename, packfile, sizeof(pack->filename));
+	pack->handle = -1;
+	pack->numfiles = numpackfiles;
+	pack->pkz = pkz;
+
+	Con_Printf ("Added packfile %s (%i files, compressed)\n", packfile, numpackfiles);
+	return pack;
+}
+
+/*
+=================
 COM_AddGameDirectory -- johnfitz -- modified based on topaz's tutorial
 =================
 */
@@ -2239,8 +2303,15 @@ _add_path:
 	// add any pak files in the format pak0.pak pak1.pak, ...
 	for (i = 0; ; i++)
 	{
-		q_snprintf (pakfile, sizeof(pakfile), "%s/pak%i.pak", com_gamedir, i);
-		pak = COM_LoadPackFile (pakfile);
+		// [PS2_QUAKE]: a compressed pakN.pkz is loaded instead of pakN.pak when there is one. The
+		// two hold the same files, so loading both would only cost the memory of a second list.
+		q_snprintf (pakfile, sizeof(pakfile), "%s/pak%i.pkz", com_gamedir, i);
+		pak = COM_LoadPkzFile (pakfile);
+		if (!pak)
+		{
+			q_snprintf (pakfile, sizeof(pakfile), "%s/pak%i.pak", com_gamedir, i);
+			pak = COM_LoadPackFile (pakfile);
+		}
 		if (i != 0 || path_id != 1 || fitzmode)
 			qspak = NULL;
 		else {
@@ -2354,7 +2425,10 @@ static void COM_Game_f (void)
 		{
 			if (com_searchpaths->pack)
 			{
-				Sys_FileClose (com_searchpaths->pack->handle);
+				if (com_searchpaths->pack->pkz) // [PS2_QUAKE]: a compressed pack has no handle
+					PS2_PkzClose (com_searchpaths->pack->pkz);
+				else
+					Sys_FileClose (com_searchpaths->pack->handle);
 				Z_Free (com_searchpaths->pack->files);
 				Z_Free (com_searchpaths->pack);
 			}

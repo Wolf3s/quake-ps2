@@ -324,6 +324,9 @@ typedef struct pack_s
 	int		handle;
 	int		numfiles;
 	packfile_t	*files;
+	// [PS2_QUAKE]: a compressed pakN.pkz in the pak's place, or NULL. It reads its own files:
+	// handle is -1, and each packfile_t's filepos is the file's index in it (ps2/engine_hooks.h).
+	struct ps2_pkz_s	*pkz;
 } pack_t;
 
 typedef struct searchpath_s

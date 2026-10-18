@@ -136,6 +136,21 @@ paths:
     `newfs_msdos -F 32 -c 64` makes them 32 KB (`diskutil` can't choose).
   - BDM caches reads under 8 sectors (`bd_cache.c`, 32 × 4 KB), so FAT walks for seeks come
     mostly from cache. FatFs has `FF_USE_FASTSEEK 0` and `FF_FS_TINY 1`.
+- **A pak handle reads 1 KB at a time.** This newlib is built without `HAVE_BLKSIZE` (its
+  `mips*-ps2-*` entry in configure.host), so stdio ignores `st_blksize` and gives every `fopen`ed
+  file a `BUFSIZ` buffer, 1024 bytes. `Sys_FileOpenRead` sets none, and a buffered `fread` copies
+  through that buffer, so a pak file's whole-file load is a `read()` per KB: e1m2.bsp, 1.3 MB, is
+  about 1,300 file server round trips. *(Q2)* The Quake II port reads its pak handle unbuffered,
+  in one read. The compressed packs read their own descriptor raw, a whole stored file or 32 KB
+  of compressed input at a time.
+- **Compressed packs in PCSX2** (2026-10-18, release + I/O log, the e1m1 to e1m2 change, three
+  runs each, every one the same to 0.01 s): from `pak0.pkz` + `pak1.pkz` the load read 1.30 MB for
+  the 2.77 MB it delivered and took 1.50 s, 0.29 s of it in file calls, 0.27 s of those
+  inflating; from the paks it took 1.60 s, 0.39 s in file calls. The pkz's drive reads cost 0.02
+  s, the pak's 1 KB ones 0.39. Inflating ran at about 10 MB/s of output, as PCSX2 runs the EE (no
+  cache); *(Q2)* a console spent about 1.2 s of base2's load inflating. A debug build also
+  checks each pkz file's CRC, which made the map cycle's loads ~15 ms longer each from the pkz.
+  PCSX2 models neither drive, so none of this is a console's figure.
 - *(Q2)* **What the buffer and the clusters bought** (2026-10-11/12, a PAL console, release + I/O
   log, base2 from the pak): over USB with 8 KB clusters and the 16 KB buffer 58.6 s; with 32 KB
   clusters and the 64 KB buffer 40.4 s; from the HDD (PFS, 64 KB buffer) 15.8 s. Fitting the USB

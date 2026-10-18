@@ -540,7 +540,8 @@ size_t TagBytes(const ps2::heap::MemTag tag)
 
 // One line per map: QuakeSpasm's hunk (the level, and the cache of models and sounds it loaded,
 // and what is left of the hunk after both), then the backend's level data by tag and the
-// program's totals. "NEW PEAK" marks the map whose load took the most of the heap.
+// program's totals. "NEW PEAK" marks the map whose load took the most of the heap. A second line
+// has the load's own peak, with what the compressed packs held at that moment.
 void ReportMap(const MapEntry & map, const int index)
 {
     using ps2::heap::FormatMemoryUnit;
@@ -573,9 +574,11 @@ void ReportMap(const MapEntry & map, const int index)
                FormatMemoryUnit(ps2::heap::GetAvailableMemBytes(), true, freeMem, sizeof(freeMem)),
                (peakNow > s_peakBeforeMap) ? "  <- NEW PEAK" : "");
 
-    Con_Printf("MapCycle [%2d/%2d] %-6s %-5s load peak %-9s ARENA %-9s\n",
+    char pack[kUnit];
+    Con_Printf("MapCycle [%2d/%2d] %-6s %-5s load peak %-9s Pack %-9s ARENA %-9s\n",
                index + 1, s_mapCount, map.name, map.pak,
                FormatMemoryUnit(ps2::heap::GetWindowPeakMemBytes(), true, peak, sizeof(peak)),
+               FormatMemoryUnit(ps2::heap::GetWindowPeakTagBytes(MemTag::Pack), true, pack, sizeof(pack)),
                FormatMemoryUnit(ps2::heap::GetHeapStats().arenaBytes, true, freeMem, sizeof(freeMem)));
 }
 

@@ -13,6 +13,10 @@
   ASCII (the separator bar as `-----`).
 - **Edit PCSX2.ini only while PCSX2 is closed.** It rewrites the file on exit.
 - Every launch overwrites `emulog.txt`. Copy it out before the next launch if you need it.
+- **An `id1/pakN.pkz` (from `make pkz`) is loaded instead of `pakN.pak`.** The log says `Added
+  packfile host:/id1/pak0.pkz (339 files, compressed)`. To test the pak path, move the pkz out of
+  `id1/`, and don't leave a stale one behind after changing a pak: `make pkz` redoes a pkz only
+  when its pak is newer. A pak has no such line (QuakeSpasm prints none).
 - **An ELF path of 152 characters or more never reaches `main()`.** PCSX2 passes it to the BIOS
   as `host:<absolute path>`, and from 152 characters (that string's length) the BIOS's loader
   faults right after `# Restart Without Memory Clear Done.`: `TLB Miss, pc=0x80005558 addr=0x0`,
@@ -136,6 +140,16 @@ The rest are scripted runs:
   `ps2_logfile 1` in the image's `autoexec.cfg`, and read what the run left with `hdiutil attach
   -readonly -nobrowse -mountpoint <dir> -imagekey diskimage-class=CRawDiskImage <image>`, then
   `hdiutil detach <dir>`. Edit the ini only with PCSX2 closed, and restore it after.
+- **Compressed packs**: a scratch `id1/` of pkz symlinks and the map cycle, in a debug build, which
+  checks the CRC of every file it reads from a pkz. `make pkz PAK_DIR=<dir>` on a directory of pak
+  symlinks writes the pkz beside them, outside `id1/`. On 2026-10-18 the 9 shareware levels loaded
+  from `pak0.pkz` alone (`Playing shareware version.`, so the shareware check still passes) and
+  the 38 registered ones from both, clean, and the USB image recipe above, with only the pkz on
+  it, booted from `mass0:` and changed levels under the plaque. For `COM_Game_f`'s `PS2_PkzClose`:
+  `-gameargs "-game <dir>"`, with a `<dir>/pak0.pkz` (pakzip of a small pak) holding an
+  `autoexec.cfg` that execs a cfg from it and ends in `game id1`. id1's own `autoexec.cfg` then
+  runs, with no loop, and `ps2_memstats` shows the mod's 1.1 KB of `Pack` gone. The switch
+  writes the config, to the card too with `ps2_savedevice "mc"`: back the card up first.
 - **The loading screen**: the plaque only goes up over a game, so `map e1m1`, `w100`, then
   `changelevel e1m2` and `screenshot` straight after it. Nothing draws while the plaque is up, so
   the shot is the last loading screen frame. Waits after the `changelevel` leave the client stuck
@@ -232,5 +246,26 @@ The rest are scripted runs:
   call. Give outputs exact-size heap buffers with canaries. Then prove the harness by seeding
   defects into a shadow copy of the header (`-I<mutant dir>` first): the `half_band.h`
   harness caught 7 of 7 (off-by-ones, an over-long memmove, a wrong tap, a 32-bit overflow).
+- **The pkz reader** (fs/pkz_pack.cpp) runs on the host the same way. Fake `ps2/common.h`
+  (`MAX_QPATH`/`MAX_OSPATH`, `Con_Printf`/`Con_SafePrintf`, `q_strlcpy`, a `[[noreturn]]`
+  `Sys_Error` that longjmps when a test expects one, and a `ps2::heap` that checks every `Free`'s
+  size and tag against its `Alloc`), `ps2/engine_hooks.h` (the compressed-pack section, copied
+  out of the real one), `ps2/system/sys.h` (`OpenFileHandle` into a vector) and `tamtypes.h`.
+  macOS has no `fopencookie`: define `cookie_io_functions_t`, and `#define fopencookie` and
+  `setvbuf` to stand-ins (the latter declared in `std`) after `<cstdio>` and before including the
+  `.cpp`; record the buffering each stream asks for, and call the cookie callbacks as newlib's
+  unbuffered `fread` (the read for all that is left, until 0 or -1), `fseek` and `ftell` (a seek
+  of 0 from `SEEK_CUR`) do. Link the miniz sources with the game's `save/miniz_cfg`. On
+  2026-10-18 the harness read all 424 files of id's pak0.pkz and pak1.pkz whole through handles,
+  and as streams with 1000 random reads and seeks each (623K checks, with and without the CRC
+  checks, under ASan/UBSan). It did the same over synthetic packs with 4 and 32 KB blocks and
+  zips from Info-ZIP (extra fields, a comment, directories) and Python's `zipfile`, and stopped on
+  13 malformed packs with the right `Sys_Error`. Of a damaged pack's reads, the CRC check failed
+  every one, saying so once each; without it, 4 of the 6 delivered the wrong bytes.
+  It caught 14 of 14 seeded mutants (the whole-file fast path, a stored file's offset and seek,
+  the CRC, the buffering, the restart index, the dictionary window, stale input, the wrap copy,
+  the local extra field, a warning printed twice). One that turned Restart's `<` into `<=` passed,
+  and is equivalent. macOS has no `timeout`: bound a mutant run with `perl -e 'alarm 600; exec
+  @ARGV' ...`, and check the exit code isn't 127.
 - Code with EE/VU0 inline asm can't run on the host. Use the standalone test ELF recipe in
   [performance.md](performance.md).

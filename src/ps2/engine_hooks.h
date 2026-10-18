@@ -2,10 +2,10 @@
  * File: engine_hooks.h
  * Brief: What QuakeSpasm's C needs from the backend that no QuakeSpasm header declares: the PS2
  *        stand-ins for the few OpenGL calls made outside the renderer (the status bar's alpha
- *        and scissor, the view blend, the screenshot readback), the loading screen, the debug
- *        page, the PS2's additions to the default config, where save games and config.cfg are
- *        kept, and the engine state the backend reads that QuakeSpasm keeps to one file. Every
- *        engine line that uses this is tagged [PS2_QUAKE].
+ *        and scissor, the view blend, the screenshot readback), the loading screen, the
+ *        compressed packs, the debug page, the PS2's additions to the default config, where save
+ *        games and config.cfg are kept, and the engine state the backend reads that QuakeSpasm
+ *        keeps to one file. Every engine line that uses this is tagged [PS2_QUAKE].
  *        NOTE: Shared header between C and C++.
  *
  * This source code is released under the GNU GPL v2 license.
@@ -68,6 +68,48 @@ void PS2_FileOpening(const char * fileName);
 // screen of its own (renderer/loading_screen.h).
 void PS2_LoadingScreenBegin(void);
 void PS2_LoadingScreenEnd(void);
+
+// ------------------------------------------------------------------------------------------------
+// Compressed packs (common.c)
+// ------------------------------------------------------------------------------------------------
+//
+// A pakN.pkz is loaded in place of the pakN.pak with its number: a zip of the same files, most of
+// them deflated, made by pakzip (src/ps2/fs/pkz_format.h has the format). COM_AddGameDirectory
+// looks for one before each pak and keeps it in a pack_t like a pak's, with the same packfile_t
+// list for the lookups; these are the part that knows zips (src/ps2/fs/pkz_pack.cpp). A pkz reads
+// its files itself, so its pack_t has no handle (-1) and its pkz set, and each packfile_t's
+// filepos is the file's index in it. Only the main thread may use one.
+
+typedef struct ps2_pkz_s ps2_pkz_t;
+
+// Called by PS2_PkzListFiles once per file, in directory order, with the index the calls below
+// take. 'name' is NUL-terminated and shorter than MAX_QPATH.
+typedef void (*ps2_pkz_file_fn)(void * context, int index, const char * name, int lengthBytes);
+
+// Opens the pack at 'path' and reads its directory; null if there is no such file. One that isn't
+// a pack this build can read is a Sys_Error, as COM_LoadPackFile's damaged pak is.
+ps2_pkz_t * PS2_PkzOpen(const char * path);
+
+// How many files PS2_PkzListFiles will report: directories, and names of MAX_QPATH characters
+// or more (with a warning), are left out.
+int PS2_PkzNumFiles(const ps2_pkz_t * pkz);
+
+// Reports every file to 'fn', then frees the copy of the zip directory PS2_PkzOpen kept for it.
+// Call it once, right after PS2_PkzOpen.
+void PS2_PkzListFiles(ps2_pkz_t * pkz, ps2_pkz_file_fn fn, void * context);
+
+// File 'index', opened at its first byte as COM_FindFile opens a pak's: a Sys_File handle for
+// COM_OpenFile, which Sys_FileRead reads (whole, in one inflate) and COM_CloseFile closes, since
+// no pack has that handle; or a stdio stream for COM_FOpenFile. Positions start at 0, not at an
+// offset in the pack as on a pak, which QuakeSpasm's FS_* readers allow for: they take ftell at
+// the open and seek relative to it. 'name' is for messages. A handle that can't be opened is a
+// Sys_Error, a stream null.
+int PS2_PkzOpenHandle(ps2_pkz_t * pkz, int index, const char * name);
+FILE * PS2_PkzOpenStream(ps2_pkz_t * pkz, int index, const char * name);
+
+// Closes the pack (COM_Game_f, leaving a game directory). Streams still open on it keep it alive
+// until they are closed.
+void PS2_PkzClose(ps2_pkz_t * pkz);
 
 // ------------------------------------------------------------------------------------------------
 // The debug page (menu.c)

@@ -44,7 +44,8 @@ none of id's maps sets it, so it stays a future exercise for custom maps.
 ## Game data
 
 `id1/` at the repo root (gitignored): the shareware `pak0.pak`, or the registered `pak0.pak` +
-`pak1.pak`. `make run` symlinks `build/<config>/id1` to it, since PCSX2's `host:` is the ELF's
+`pak1.pak`. A `pakN.pkz` there (`make pkz`, a compressed copy) is loaded in its pak's place.
+`make run` symlinks `build/<config>/id1` to it, since PCSX2's `host:` is the ELF's
 directory. Engine output carries a `[Q1]` prefix in the PCSX2 log.
 
 `id1/config.cfg` is the one tracked file there: the settings every run starts from. The game

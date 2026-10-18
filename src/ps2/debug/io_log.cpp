@@ -25,7 +25,7 @@ namespace {
 // The EE timer counts at BUSCLK/256, 576,000 ticks a second (sys.cpp's Milliseconds).
 constexpr u32 kTicksPerSec = 576000;
 
-// A load's lines: about 50 characters a file, and a level load opens 50 to 200 files. The last
+// A load's lines: about 75 characters a file, and a level load opens 50 to 200 files. The last
 // of it is kept for the summary, so a load that opens more drops lines, not its totals.
 constexpr int kOutBytes       = 32 * 1024;
 constexpr int kSummaryReserve = 512;
@@ -35,8 +35,11 @@ struct FileEntry
 {
     char name[MAX_QPATH];
     u32  ticks;
-    int  bytes;
+    u32  inflateTicks;
+    int  bytes;      // delivered by the reads
+    int  readBytes;  // off the drive
     bool loose;
+    bool compressed;
 };
 
 static bool      s_recording      = false;
@@ -47,9 +50,14 @@ static bool      s_haveFile       = false;
 static FileEntry s_file           = {};
 
 // The load's totals.
-static int s_files     = 0;
-static u32 s_callTicks = 0;
-static u32 s_bytes     = 0;
+static int s_files        = 0;
+static u32 s_callTicks    = 0;
+static u32 s_inflateTicks = 0;
+static u32 s_bytes        = 0;
+static u32 s_readBytes    = 0;
+
+// File calls in progress: the pkz reader's reports count only inside one.
+static int s_callDepth = 0;
 
 static char s_out[kOutBytes];
 static int  s_outUsed      = 0;
@@ -102,11 +110,14 @@ void WriteFileLine()
     s_haveFile = false;
 
     ++s_files;
-    s_callTicks += s_file.ticks;
-    s_bytes     += static_cast<u32>(s_file.bytes);
+    s_callTicks    += s_file.ticks;
+    s_inflateTicks += s_file.inflateTicks;
+    s_bytes        += static_cast<u32>(s_file.bytes);
+    s_readBytes    += static_cast<u32>(s_file.readBytes);
 
-    Append(kSummaryReserve, "%8u  %10d  %-6s  %s\n", s_file.ticks / (kTicksPerSec / 1000u), s_file.bytes,
-           s_file.loose ? "file" : "pak", s_file.name);
+    const char * const source = s_file.loose ? "file" : (s_file.compressed ? "pkz" : "pak");
+    Append(kSummaryReserve, "%8u  %10u  %10d  %10d  %-6s  %s\n", s_file.ticks / (kTicksPerSec / 1000u),
+           s_file.inflateTicks / (kTicksPerSec / 1000u), s_file.bytes, s_file.readBytes, source, s_file.name);
 }
 
 // The load's text to stdout, and appended to <gamedir>/io_log.txt in one write.
@@ -164,12 +175,14 @@ void LoadBegin()
     s_haveFile     = false;
     s_files        = 0;
     s_callTicks    = 0;
+    s_inflateTicks = 0;
     s_bytes        = 0;
+    s_readBytes    = 0;
     s_outUsed      = 0;
     s_out[0]       = '\0';
     s_linesDropped = 0;
 
-    Append(kSummaryReserve, "#       ms       bytes  source  name\n");
+    Append(kSummaryReserve, "#     ms  inflate_ms       bytes  read_bytes  source  name\n");
     s_loadStartTicks = Ticks();
 }
 
@@ -184,12 +197,16 @@ void LoadEnd()
     WriteFileLine();
     s_recording = false;
 
-    const char * const name = (s_loadName[0] != '\0') ? s_loadName : "no map";
-    const Hundredths mb     = InHundredths(s_bytes, 1024u * 1024u);
-    const Hundredths calls  = InHundredths(s_callTicks, kTicksPerSec);
-    const Hundredths load   = InHundredths(loadTicks, kTicksPerSec);
-    Append(0, "# load %d, %s: %d files, %u.%02u MB read; %u.%02u s in file calls, of %u.%02u s\n", s_loadNumber,
-           name, s_files, mb.whole, mb.hundredths, calls.whole, calls.hundredths, load.whole, load.hundredths);
+    const char * const name   = (s_loadName[0] != '\0') ? s_loadName : "no map";
+    const Hundredths delivered = InHundredths(s_bytes, 1024u * 1024u);
+    const Hundredths read      = InHundredths(s_readBytes, 1024u * 1024u);
+    const Hundredths calls     = InHundredths(s_callTicks, kTicksPerSec);
+    const Hundredths inflating = InHundredths(s_inflateTicks, kTicksPerSec);
+    const Hundredths load      = InHundredths(loadTicks, kTicksPerSec);
+    Append(0, "# load %d, %s: %d files, %u.%02u MB delivered, %u.%02u MB read; %u.%02u s in file\n"
+              "#   calls (%u.%02u s inflating), of %u.%02u s\n",
+           s_loadNumber, name, s_files, delivered.whole, delivered.hundredths, read.whole, read.hundredths,
+           calls.whole, calls.hundredths, inflating.whole, inflating.hundredths, load.whole, load.hundredths);
 
     const int bufferBytes = ps2::sys::FileXioBufferBytes();
     if (bufferBytes > 0)
@@ -237,12 +254,48 @@ void LooseFile()
     }
 }
 
-void Call(const u32 ticks, const int bytes)
+void CompressedFile()
 {
     if (s_recording && s_haveFile)
     {
+        s_file.compressed = true;
+    }
+}
+
+u32 CallBegin()
+{
+    ++s_callDepth;
+    return Ticks();
+}
+
+void Call(const u32 ticks, const int bytes)
+{
+    --s_callDepth;
+    if (s_recording && s_haveFile)
+    {
+        const int delivered = (bytes > 0) ? bytes : 0;
         s_file.ticks += ticks;
-        s_file.bytes += (bytes > 0) ? bytes : 0;
+        s_file.bytes += delivered;
+        if (!s_file.compressed)
+        {
+            s_file.readBytes += delivered; // A pkz's reads report their own (DriveRead).
+        }
+    }
+}
+
+void DriveRead(const int bytes)
+{
+    if (s_recording && s_haveFile && s_callDepth > 0)
+    {
+        s_file.readBytes += bytes;
+    }
+}
+
+void Inflate(const u32 ticks)
+{
+    if (s_recording && s_haveFile && s_callDepth > 0)
+    {
+        s_file.inflateTicks += ticks;
     }
 }
 
