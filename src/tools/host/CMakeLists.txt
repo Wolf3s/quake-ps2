@@ -1,7 +1,7 @@
 # ================================================================================================
-# The host command line tools (README.md, "Host tools"): imgdump, unpak and musenc, built with
-# the host's own C++ compiler on macOS, Linux or Windows (MSVC). `make tools` drives this project
-# on macOS and Linux. Anywhere else, from the repository root:
+# The host command line tools (README.md, "Host tools"): imgdump, unpak, musenc and pakzip, built
+# with the host's own C++ compiler on macOS, Linux or Windows (MSVC). `make tools` drives this
+# project on macOS and Linux. Anywhere else, from the repository root:
 #
 #   cmake -S src/tools/host -B build/tools
 #   cmake --build build/tools --config Release
@@ -10,23 +10,24 @@
 # ================================================================================================
 
 cmake_minimum_required(VERSION 3.24)
-project(quake_tools CXX)
+project(quake_tools C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Always optimized: musenc tries every ADPCM filter and shift on every block of a soundtrack.
-# A single-config generator given no build type would not optimize at all.
+# Always optimized: pakzip deflates whole packs, and musenc tries every ADPCM filter and shift
+# on every block of a soundtrack. A single-config generator given no build type would not
+# optimize at all.
 get_property(IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 if(NOT IS_MULTI_CONFIG AND NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Release, RelWithDebInfo, Debug or MinSizeRel." FORCE)
 endif()
 
 # MSVC links its C/C++ runtime statically (/MT), so each .exe runs on its own, without the
-# Visual C++ Redistributable installed. Set before any target is made: a runtime mismatch
-# between objects is a link error.
+# Visual C++ Redistributable installed. Set before any target is made, miniz included: a
+# runtime mismatch between objects is a link error.
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # The binaries go to the build directory itself, unless the caller names another place (the
@@ -75,7 +76,31 @@ endfunction()
 
 add_tool(imgdump)
 add_tool(musenc)
+add_tool(pakzip)
 add_tool(unpak)
+
+# miniz for pakzip, built the way the game builds it: only the raw deflate/inflate and CRC-32
+# sources, straight from the submodule, as C11, and its warnings are not ours to fix. Not
+# through miniz's own CMakeLists.txt, which adds the zip API and generates a miniz_export.h of
+# its own. The one in miniz_cfg/ stands in for that header and carries the host configuration:
+# the full-size compressor tables the game trims (TDEFL_LESS_MEMORY), and no stdio or zlib API.
+set(MINIZ_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../miniz)
+if(NOT EXISTS ${MINIZ_DIR}/miniz.c)
+    message(FATAL_ERROR "${MINIZ_DIR} is empty - run 'git submodule update --init'")
+endif()
+
+add_library(miniz STATIC ${MINIZ_DIR}/miniz.c ${MINIZ_DIR}/miniz_tdef.c ${MINIZ_DIR}/miniz_tinfl.c)
+set_target_properties(miniz PROPERTIES C_STANDARD 11 C_EXTENSIONS ON)
+target_include_directories(miniz SYSTEM PUBLIC ${MINIZ_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/miniz_cfg)
+if(MSVC)
+    # /W0, not /w: Visual Studio projects map /W0 onto their warning level setting, while /w
+    # is added after the default /W1 and draws a D9025 "overriding" warning.
+    target_compile_options(miniz PRIVATE /W0)
+else()
+    target_compile_options(miniz PRIVATE -w)
+endif()
+
+target_link_libraries(pakzip PRIVATE miniz)
 
 # MSVC has no <dirent.h>, and unpak takes S_ISDIR from it. tronkko/dirent implements it over the
 # Win32 API, in one header. Included as a system header: it pulls in <windows.h>, and neither

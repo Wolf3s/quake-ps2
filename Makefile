@@ -8,8 +8,9 @@
 #    make release     -> optimized   -> build/release/quake.elf
 #    make run         -> build + launch in PCSX2  (VSCode: F5)
 #    make release run -> the same, with the release build
-#    make tools       -> build host tools (unpak, imgdump, musenc, symbolize) into build/tools/
+#    make tools       -> build host tools (unpak, imgdump, musenc, pakzip, symbolize) into build/tools/
 #    make music       -> encode id1/music/trackNN.wav into the trackNN.adp files the game streams
+#    make pkz         -> convert id1/pakN.pak into the compressed pakN.pkz the game prefers
 #    make clean       -> remove build artifacts (both configs)
 #    make clean_vu    -> remove only assembled VU microprograms
 #
@@ -241,15 +242,17 @@ MINIZ_OBJS     = $(addprefix $(OUTPUT_DIR)/miniz/, $(MINIZ_SRC:.c=.o))
 # are config-independent, so they live outside build/<config>/.
 #
 # The C++ tools are a CMake project (src/tools/host/CMakeLists.txt), so they build the
-# same way on every host, Windows included. It owns their compiler flags. Its build tree
-# is build/tools/cmake/; the binaries land in build/tools/.
+# same way on every host, Windows included. It owns their compiler flags and the host
+# configuration of miniz that pakzip links (full-size compressor tables, unlike the
+# game's). Its build tree is build/tools/cmake/; the binaries land in build/tools/.
 HOST_TOOLS_PATH  = $(SRC_DIR)/tools/host
 HOST_TOOLS_CMAKE = $(BUILD_DIR)/tools/cmake
 SCRIPTS_PATH     = $(SRC_DIR)/tools/scripts
-TOOLS_CXX_BINS   = $(addprefix $(BUILD_DIR)/tools/, unpak imgdump musenc)
+TOOLS_CXX_BINS   = $(addprefix $(BUILD_DIR)/tools/, unpak imgdump musenc pakzip)
 TOOLS_PY_BINS    = $(addprefix $(BUILD_DIR)/tools/, symbolize)
 TOOLS_BINS       = $(TOOLS_CXX_BINS) $(TOOLS_PY_BINS)
 HOST_CXX        ?= c++
+HOST_CC         ?= cc
 
 # IOP/IRX modules embedded into the ELF: HDD/PFS and BDM USB storage, booted
 # by ps2/system/iop_boot.cpp when the game data isn't on host:,
@@ -340,7 +343,7 @@ EE_LIBS += -lkernel -ldraw -lgraph -lpacket2 -ldma -lpad -lkbd -laudsrv -lpatche
 #  Rules
 # ----------------------------------------------------------------------------
 
-.PHONY: all release run tools host_tools music clean clean_vu compiledb
+.PHONY: all release run tools host_tools music pkz clean clean_vu compiledb
 
 all: $(GAME_ELF) tools
 
@@ -456,19 +459,20 @@ $(OUTPUT_DIR)/irx/%.o: $(IRX_PATH)/%.irx
 tools: $(TOOLS_BINS)
 
 # Configured once. After that, `cmake --build` configures again by itself whenever
-# CMakeLists.txt changes. HOST_CXX only takes effect here, so remove build/tools/ after
-# changing it. No "Built target" lines, so a build with nothing to do is silent.
+# CMakeLists.txt changes. HOST_CC/HOST_CXX only take effect here, so remove build/tools/
+# after changing them. No "Built target" lines, so a build with nothing to do is silent.
 $(HOST_TOOLS_CMAKE)/CMakeCache.txt:
 	cmake -S $(HOST_TOOLS_PATH) -B $(HOST_TOOLS_CMAKE) -DCMAKE_BUILD_TYPE=Release \
-		-DCMAKE_CXX_COMPILER=$(HOST_CXX) \
+		-DCMAKE_C_COMPILER=$(HOST_CC) -DCMAKE_CXX_COMPILER=$(HOST_CXX) \
 		-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=$(abspath $(BUILD_DIR)/tools) \
 		-DCMAKE_TARGET_MESSAGES=OFF
 
 # CMake tracks the tools' sources and headers itself (musenc shares spu_adpcm.h with the
-# game, so it plays back exactly what it measured), and does nothing when none of them
-# changed. So this runs on every make, instead of copying that list here. MAKEFLAGS is
-# cleared so the Makefiles CMake generates don't try to join this make's jobserver, which
-# isn't passed to a non-recursive recipe; --parallel gives them jobs of their own.
+# game, so it plays back exactly what it measured, pakzip shares pkz_format.h, and both see
+# the miniz submodule), and does nothing when none of them changed. So this runs on every
+# make, instead of copying that list here. MAKEFLAGS is cleared so the Makefiles CMake
+# generates don't try to join this make's jobserver, which isn't passed to a non-recursive
+# recipe; --parallel gives them jobs of their own.
 host_tools: $(HOST_TOOLS_CMAKE)/CMakeCache.txt
 	@MAKEFLAGS= cmake --build $(HOST_TOOLS_CMAKE) --parallel
 
@@ -490,6 +494,23 @@ music: $(BUILD_DIR)/tools/musenc
 		$(BUILD_DIR)/tools/musenc "$$wav" "$$adp" || exit 1; \
 	done; \
 	[ $$found = 1 ] || { echo "No trackNN.wav files in $(MUSIC_DIR)/"; exit 1; }
+
+# The compressed game packs (ps2/fs/pkz_format.h): every pakN.pak in PAK_DIR is converted to
+# the pakN.pkz beside it, skipping the ones already newer than both their .pak and the
+# converter. The game loads a pkz instead of the pak with the same number, so the .pak needn't
+# go onto the USB stick once its pkz exists.
+PAK_DIR ?= id1
+
+pkz: $(BUILD_DIR)/tools/pakzip
+	@found=0; \
+	for pak in $(PAK_DIR)/pak[0-9].pak; do \
+		[ -e "$$pak" ] || continue; \
+		found=1; \
+		pkz="$${pak%.pak}.pkz"; \
+		if [ "$$pkz" -nt "$$pak" ] && [ "$$pkz" -nt $(BUILD_DIR)/tools/pakzip ]; then continue; fi; \
+		$(BUILD_DIR)/tools/pakzip "$$pak" "$$pkz" || exit 1; \
+	done; \
+	[ $$found = 1 ] || { echo "No pakN.pak files in $(PAK_DIR)/"; exit 1; }
 
 # Script tools are published into build/tools/ under the same extensionless names
 # as the compiled ones, so everything in there is invoked the same way.

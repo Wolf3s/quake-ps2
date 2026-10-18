@@ -97,7 +97,7 @@ skyboxes or other external textures.
 Three dependencies are git submodules under [src/tools/](src/tools/):
 [vclpp](https://github.com/glampert/vclpp) (the VU microprogram preprocessor),
 [vu-checker](https://github.com/glampert/vu-checker) (checks on the VU toolchain's output) and
-[miniz](https://github.com/richgel999/miniz) (compression for the save games). Clone with
+[miniz](https://github.com/richgel999/miniz) (deflate, for the save games and `pakzip`). Clone with
 `--recursive`, or run `git submodule update --init --recursive` in an existing clone.
 
 ```sh
@@ -117,7 +117,7 @@ Both configs strip the ELF that runs and keep the symbols next to it in `quake_u
 `make compiledb` regenerates `compile_commands.json` for clangd, and `make clean` removes all
 build output.
 
-The host tools in [src/tools/host/](src/tools/host/) (`unpak`, `imgdump`, `musenc`, into
+The host tools in [src/tools/host/](src/tools/host/) (`unpak`, `imgdump`, `musenc`, `pakzip`, into
 `build/tools/`) are a CMake project, [CMakeLists.txt](src/tools/host/CMakeLists.txt). `make`
 configures it once into `build/tools/cmake/`, then runs its build every time, which does nothing
 while the tools are up to date. They are built optimized and held to the game's strict warning set
@@ -371,12 +371,12 @@ src/
     tests/              standalone bring-up scenes and tests
     builtin/            images compiled into the ELF (the QUAKE plaque, the palette), from imgdump
   tools/
-    host/               host-side command line tools (unpak, imgdump, musenc)
+    host/               host-side command line tools (unpak, imgdump, musenc, pakzip)
     scripts/            Python helpers (symbolize, compile_commands.json, frame logs, the USB
                         image) and make_github_release.sh
     vclpp/              VCL preprocessor for the VU microprograms (git submodule)
     vu-checker/         openvcl/dvp-as output checks run by every VU build (git submodule)
-    miniz/              deflate codec for the save games (git submodule)
+    miniz/              deflate codec for the save games and pakzip (git submodule)
     vscode_extensions/  VCL/VU assembly syntax highlighting for VSCode
 ```
 
