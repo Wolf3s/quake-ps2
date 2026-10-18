@@ -239,13 +239,17 @@ MINIZ_OBJS     = $(addprefix $(OUTPUT_DIR)/miniz/, $(MINIZ_SRC:.c=.o))
 # HOST C++ compiler (not the EE toolchain) since they run on the development
 # machine, and the Python ones under src/tools/scripts. Being host binaries they
 # are config-independent, so they live outside build/<config>/.
-HOST_TOOLS_PATH = $(SRC_DIR)/tools/host
-SCRIPTS_PATH    = $(SRC_DIR)/tools/scripts
-TOOLS_CXX_BINS  = $(addprefix $(BUILD_DIR)/tools/, unpak imgdump musenc)
-TOOLS_PY_BINS   = $(addprefix $(BUILD_DIR)/tools/, symbolize)
-TOOLS_BINS      = $(TOOLS_CXX_BINS) $(TOOLS_PY_BINS)
-HOST_CXX       ?= c++
-HOST_CXXFLAGS  ?= -std=gnu++20 -O2 -Wall
+#
+# The C++ tools are a CMake project (src/tools/host/CMakeLists.txt), so they build the
+# same way on every host, Windows included. It owns their compiler flags. Its build tree
+# is build/tools/cmake/; the binaries land in build/tools/.
+HOST_TOOLS_PATH  = $(SRC_DIR)/tools/host
+HOST_TOOLS_CMAKE = $(BUILD_DIR)/tools/cmake
+SCRIPTS_PATH     = $(SRC_DIR)/tools/scripts
+TOOLS_CXX_BINS   = $(addprefix $(BUILD_DIR)/tools/, unpak imgdump musenc)
+TOOLS_PY_BINS    = $(addprefix $(BUILD_DIR)/tools/, symbolize)
+TOOLS_BINS       = $(TOOLS_CXX_BINS) $(TOOLS_PY_BINS)
+HOST_CXX        ?= c++
 
 # IOP/IRX modules embedded into the ELF: HDD/PFS and BDM USB storage, booted
 # by ps2/system/iop_boot.cpp when the game data isn't on host:,
@@ -336,7 +340,7 @@ EE_LIBS += -lkernel -ldraw -lgraph -lpacket2 -ldma -lpad -lkbd -laudsrv -lpatche
 #  Rules
 # ----------------------------------------------------------------------------
 
-.PHONY: all release run tools music clean clean_vu compiledb
+.PHONY: all release run tools host_tools music clean clean_vu compiledb
 
 all: $(GAME_ELF) tools
 
@@ -448,15 +452,27 @@ $(OUTPUT_DIR)/irx/%.o: $(IRX_PATH)/%.irx
 	bin2c $< $(basename $@).c $(notdir $(basename $@))_irx
 	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $(basename $@).c -o $@
 
-# Host tools: each is a single self-contained .cpp compiled straight to a binary.
+# Host tools.
 tools: $(TOOLS_BINS)
 
-$(TOOLS_CXX_BINS):
-	cmake -S src/tools/host -B build/tools -DCMAKE_BUILD_TYPE=RelWithDebInfo
-	cmake --build build/tools --config RelWithDebInfo
+# Configured once. After that, `cmake --build` configures again by itself whenever
+# CMakeLists.txt changes. HOST_CXX only takes effect here, so remove build/tools/ after
+# changing it. No "Built target" lines, so a build with nothing to do is silent.
+$(HOST_TOOLS_CMAKE)/CMakeCache.txt:
+	cmake -S $(HOST_TOOLS_PATH) -B $(HOST_TOOLS_CMAKE) -DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_CXX_COMPILER=$(HOST_CXX) \
+		-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=$(abspath $(BUILD_DIR)/tools) \
+		-DCMAKE_TARGET_MESSAGES=OFF
 
-# musenc shares the ADPCM decoder with the game, so it plays back exactly what it measured.
-$(BUILD_DIR)/tools/musenc: $(SRC_DIR)/ps2/audio/spu_adpcm.h
+# CMake tracks the tools' sources and headers itself (musenc shares spu_adpcm.h with the
+# game, so it plays back exactly what it measured), and does nothing when none of them
+# changed. So this runs on every make, instead of copying that list here. MAKEFLAGS is
+# cleared so the Makefiles CMake generates don't try to join this make's jobserver, which
+# isn't passed to a non-recursive recipe; --parallel gives them jobs of their own.
+host_tools: $(HOST_TOOLS_CMAKE)/CMakeCache.txt
+	@MAKEFLAGS= cmake --build $(HOST_TOOLS_CMAKE) --parallel
+
+$(TOOLS_CXX_BINS): host_tools ;
 
 # The soundtrack for the CD audio module (ps2/audio/cd_audio.cpp): every trackNN.wav in
 # MUSIC_DIR, any case, is encoded to a lowercase trackNN.adp beside it, skipping the ones

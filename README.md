@@ -64,6 +64,9 @@ skyboxes or other external textures.
    export PATH=$PS2DEV/bin:$PS2DEV/ee/bin:$PS2DEV/dvp/bin:$PS2SDK/bin:$PATH
    ```
 
+   `make` also builds the host tools with the machine's own C++20 compiler, through **CMake 3.24 or
+   newer**, so `cmake` has to be on `PATH` as well.
+
 2. **PCSX2**, to run it on the emulator, plus a PS2 BIOS image for it. The Makefile's `run` target
    defaults to `/Applications/PCSX2.app/Contents/MacOS/PCSX2`; override `PCSX2=` elsewhere.
 
@@ -113,6 +116,23 @@ make run        # build, then launch it in PCSX2
 Both configs strip the ELF that runs and keep the symbols next to it in `quake_unstripped.elf`.
 `make compiledb` regenerates `compile_commands.json` for clangd, and `make clean` removes all
 build output.
+
+The host tools in [src/tools/host/](src/tools/host/) (`unpak`, `imgdump`, `musenc`, into
+`build/tools/`) are a CMake project, [CMakeLists.txt](src/tools/host/CMakeLists.txt). `make`
+configures it once into `build/tools/cmake/`, then runs its build every time, which does nothing
+while the tools are up to date. They are built optimized and held to the game's strict warning set
+as errors (`/W4` under MSVC). They build on Windows too, with MSVC, from the repository root:
+
+```sh
+cmake -S src/tools/host -B build/tools
+cmake --build build/tools --config Release
+```
+
+That leaves the `.exe` files in `build/tools/Release/`, with the C/C++ runtime linked statically, so
+they run without the Visual C++ Redistributable. [CI](.github/workflows/tools.yml) builds the tools
+on Linux (GCC), macOS (Apple clang) and Windows (MSVC) whenever they change, and keeps the Windows
+executables as an artifact, `host-tools-windows-x64`, on each run's page under the repository's
+Actions tab, for 90 days. Downloading it needs a GitHub sign-in.
 
 [make_github_release.sh](src/tools/scripts/make_github_release.sh) `[-f] [-u] [version]` cuts a
 release: a clean build of both configs, each config's `quake.elf` packaged with `LICENSE`,

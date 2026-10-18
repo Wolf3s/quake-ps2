@@ -63,6 +63,10 @@ changed a setting. Commit a changed default on purpose, not as fallout from a te
 - `make` = debug (`-O2`, asserts on) → `build/debug/quake.elf`. `make release` = `-O3`, no
   asserts, no debug-only code → `build/release/`. `make run` / `make release run` launch PCSX2.
   The symbols are in `quake_unstripped.elf` next to each stripped ELF.
+- The host tools (`src/tools/host`) are a CMake project, which `make` configures into
+  `build/tools/cmake/` and builds on every run. CMake tracks their dependencies, so the
+  Makefile doesn't. CI (`.github/workflows/tools.yml`) builds only these tools, with GCC,
+  Apple clang and MSVC, and keeps the Windows executables as an artifact.
 - `PS2_QUAKE_DEBUG`, `PS2_QUAKE_ASSERTS` and `PS2_QUAKE_PROFILE` are always defined to 0 or 1.
   Test them with `#if`, never `#ifdef` (`-Wundef` is on).
 - make does not track flag changes. After editing `CONFIG_DEFS` or other flags,

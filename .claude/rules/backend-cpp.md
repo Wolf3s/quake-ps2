@@ -12,6 +12,18 @@ paths:
   the `-Werror` set in the Makefile's `EE_CXX_WARNFLAGS`. ps2sdk and miniz headers are
   `-isystem`, so only our code is held to it. QuakeSpasm's C is exempt. Don't apply any of this
   to it.
+- The host tools (`src/tools/host`) are held to the same set, minus `-Wdouble-promotion` and
+  plus `-Wpedantic`, by their CMakeLists.txt, and MSVC to `/W4`, all as errors. `make tools`
+  only checks Apple clang. GCC and MSVC are checked in CI (`.github/workflows/tools.yml`).
+  For GCC-only warnings before pushing, the EE compiler in its LP64 ABI stands in for a host
+  GCC: `mips64r5900el-ps2-elf-g++ -mabi=64 -std=gnu++20 -O3 <flags> -c -o /dev/null x.cpp`.
+  Without `-mabi=64` it is a 32-bit target, where `uint32_t` is `long` and `size_t` is 32 bits,
+  and its format and overflow findings don't apply to a host.
+- Ubuntu's GCC turns on `_FORTIFY_SOURCE` by default, and glibc then declares `fread`, `fgets`
+  and the `scanf` family `warn_unused_result`. Neither macOS's libc nor newlib does, so an
+  unchecked `fread` passes `make tools` and fails Linux CI (found in quake2-ps2's unpak,
+  2026-10-18). To check locally, redeclare them with `__attribute__((warn_unused_result))` in a
+  header passed by `-include`.
 - Reach the engine through `ps2/common.h`, not by including engine headers directly. It
   renames QuakeSpasm's BSP `texinfo_t` to `q1_texinfo_t` for C++, because libdraw's
   `draw_buffers.h` defines its own `texinfo_t`; the renderer works from `mtexinfo_t` anyway.
@@ -84,7 +96,9 @@ Only *implicit* conversions warn. An explicit `static_cast` is the fix almost ev
   dead `return X; // unreachable` after one: drop it.)
   If a helper has any path returning null (e.g. a "measure" mode), every dereference of its
   result warns. Remove that path, e.g. by splitting a sizer type from the allocator. This can
-  surface when an int index becomes a pointer.
+  surface when an int index becomes a pointer. In the host tools, GCC at `-O3` flags writes
+  into a `std::vector` sized by `uint32_t` arithmetic that can wrap to 0, which leaves
+  `data()` null (musenc's `BuildWav`, 2026-10-18). Do the size arithmetic in `size_t`.
 - `-Wdeprecated-copy`: a user-provided `operator=` on an aggregate errors at every copy site.
   Wrap the *class definition* in `#pragma GCC diagnostic push/ignored "-Wdeprecated-copy"/pop`.
   GCC checks the state at the class, not at the use. Don't declare a copy ctor instead: any
